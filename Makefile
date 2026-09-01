@@ -1,7 +1,12 @@
-.PHONY: build-node build-cli build-gui test lint clean
+.PHONY: build-node build-cli build-gui docker-build test lint clean
 
 build-node:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/rookeryd ./node/cmd/rookeryd
+
+# Builds the node's Docker image locally, e.g. for testing before it's built
+# by CI and published to ghcr.io on push (see .github/workflows/node-docker.yml).
+docker-build:
+	docker build -f node/Dockerfile -t rookery-node .
 
 build-cli:
 	go build -o bin/rookery-cli ./client/cmd/rookery-cli

@@ -1,0 +1,6 @@
+client/
+bin/
+.git/
+*.exe
+*.md
+node/configs/node.yaml

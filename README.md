@@ -57,35 +57,61 @@ openssl rand -hex 32
 
 Один и тот же секрет должен быть прописан и в конфиге ноды, и в конфиге клиента.
 
-## Установка ноды на Ubuntu
+## Установка ноды на Ubuntu (Docker, рекомендуется)
 
-Ставится прямо на сервере, сборка из исходников — бинарь не публикуется отдельно.
+При каждом пуше в `master`, затрагивающем `node/` или `shared/`, GitHub Actions
+собирает образ ноды и публикует его в `ghcr.io/proxt/rookery-node` (см.
+`.github/workflows/node-docker.yml`). На VDS ничего собирать не нужно —
+только скачать готовый образ и запустить.
 
-1. Поставить Go 1.22+, если его ещё нет (пакет в apt часто устаревший — надёжнее
-   официальный тарбол; замените версию на актуальную с https://go.dev/dl/):
+1. Поставить Docker, если его ещё нет:
    ```
-   curl -LO https://go.dev/dl/go1.27.0.linux-amd64.tar.gz
-   sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.27.0.linux-amd64.tar.gz
-   echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc
-   go version
+   curl -fsSL https://get.docker.com | sudo sh
    ```
-2. Склонировать репозиторий и собрать ноду:
+2. Скачать compose-файл и пример конфига:
    ```
-   git clone https://github.com/proxt/rookery.git
-   cd rookery
-   make build-node
+   mkdir -p ~/rookery && cd ~/rookery
+   curl -O https://raw.githubusercontent.com/proxt/rookery/master/node/deploy/docker-compose.yml
+   curl -o node.yaml https://raw.githubusercontent.com/proxt/rookery/master/node/configs/node.example.yaml
    ```
-   Получится статический линукс-бинарь `bin/rookeryd` (`CGO_ENABLED=0`, без внешних
-   зависимостей — файл можно скопировать на другую машину и без Go).
-3. Дальше — как в разделе «Развёртывание ноды» ниже: системный пользователь,
-   конфиг, systemd, Caddy.
+3. Отредактировать `node.yaml`: вписать `secret` (`openssl rand -hex 32`, тот же
+   секрет — в конфиг клиента), при желании поменять `ice_udp_port`.
+4. Запустить:
+   ```
+   sudo docker compose up -d
+   sudo docker compose logs -f
+   ```
+5. Поставить Caddy на хосте (не в контейнере) и взять за основу
+   `node/deploy/Caddyfile.example` — подставить свой домен вместо
+   `your-node-hostname.example.com`. Caddy получит TLS-сертификат сам и
+   проксирует на `127.0.0.1:8080`, куда `docker-compose.yml` прокидывает ноду
+   через `network_mode: host`.
 
-Обновление до новой версии: `git pull && make build-node`, затем
-`sudo systemctl restart rookery-node`.
+Обновление до новой версии: `sudo docker compose pull && sudo docker compose up -d`.
 
-## Развёртывание ноды
+`network_mode: host` в compose-файле не опционален — без него ICE-агент
+объявит клиентам внутренний Docker-адрес контейнера вместо публичного IP VDS,
+и подключение не установится.
 
-1. Бинарь уже собран на предыдущем шаге (`bin/rookeryd`, статический, без CGO).
+Первый пуш в `master` также нужно один раз сделать публичным пакет в GitHub
+(Packages → rookery-node → Package settings → Change visibility → Public),
+иначе `docker pull` на VDS потребует `docker login` в ghcr.io.
+
+### Локальная сборка из исходников (для разработки/тестов)
+
+Без Docker, например чтобы погонять ноду в WSL при разработке:
+
+```
+git clone https://github.com/proxt/rookery.git
+cd rookery
+make build-node   # bin/rookeryd — статический линукс-бинарь, CGO_ENABLED=0
+```
+
+Дальше — как в разделе «Развёртывание ноды без Docker» ниже.
+
+## Развёртывание ноды без Docker
+
+1. Собрать (`make build-node`, см. выше) или скачать `bin/rookeryd`.
 2. Скопировать в `/opt/rookery/rookeryd`:
    ```
    sudo mkdir -p /opt/rookery
