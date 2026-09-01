@@ -1,11 +1,13 @@
 # Rookery
 
+Репозиторий: https://github.com/proxt/rookery
+
 WebRTC-туннель: произвольный TCP/UDP поверх WebRTC DataChannel между Windows-клиентом
 и нодой на Ubuntu, так что на уровне сети сессия выглядит как обычный p2p-трафик.
 
 Статус: сквозной туннель работает — SOCKS5 CONNECT (TCP) и UDP ASSOCIATE проверены
 end-to-end, реконнект с экспоненциальным backoff и backpressure по bufferedAmount
-на месте. GUI на Wails ещё не сделан (клиент пока только headless CLI).
+на месте. Клиент есть в двух видах: headless CLI и Wails GUI (окно, трей, автозапуск).
 
 ## Структура репозитория
 
@@ -13,7 +15,7 @@ end-to-end, реконнект с экспоненциальным backoff и ba
   HMAC-аутентификация сигналинга (`signaling`)
 - `node/` — серверная нода (`cmd/rookeryd`), собирается `CGO_ENABLED=0` под linux/amd64
 - `client/` — Windows-клиент: чистое ядро (`internal/engine`), headless CLI
-  (`cmd/rookery-cli`) и Wails GUI (`gui/`, добавится позже)
+  (`cmd/rookery-cli`) и Wails GUI (`gui/`)
 
 Модули объединены через `go.work` в корне; `shared` не импортирует `node`/`client`,
 а `node` и `client` не импортируют друг друга.
@@ -55,10 +57,40 @@ openssl rand -hex 32
 
 Один и тот же секрет должен быть прописан и в конфиге ноды, и в конфиге клиента.
 
+## Установка ноды на Ubuntu
+
+Ставится прямо на сервере, сборка из исходников — бинарь не публикуется отдельно.
+
+1. Поставить Go 1.22+, если его ещё нет (пакет в apt часто устаревший — надёжнее
+   официальный тарбол; замените версию на актуальную с https://go.dev/dl/):
+   ```
+   curl -LO https://go.dev/dl/go1.27.0.linux-amd64.tar.gz
+   sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.27.0.linux-amd64.tar.gz
+   echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc && source ~/.bashrc
+   go version
+   ```
+2. Склонировать репозиторий и собрать ноду:
+   ```
+   git clone https://github.com/proxt/rookery.git
+   cd rookery
+   make build-node
+   ```
+   Получится статический линукс-бинарь `bin/rookeryd` (`CGO_ENABLED=0`, без внешних
+   зависимостей — файл можно скопировать на другую машину и без Go).
+3. Дальше — как в разделе «Развёртывание ноды» ниже: системный пользователь,
+   конфиг, systemd, Caddy.
+
+Обновление до новой версии: `git pull && make build-node`, затем
+`sudo systemctl restart rookery-node`.
+
 ## Развёртывание ноды
 
-1. Собрать бинарь: `make build-node` (получится статический `bin/rookeryd`, без CGO).
-2. Скопировать на сервер, например в `/opt/rookery/rookeryd`.
+1. Бинарь уже собран на предыдущем шаге (`bin/rookeryd`, статический, без CGO).
+2. Скопировать в `/opt/rookery/rookeryd`:
+   ```
+   sudo mkdir -p /opt/rookery
+   sudo cp bin/rookeryd /opt/rookery/rookeryd
+   ```
 3. Создать системного пользователя без прав на вход:
    ```
    useradd --system --no-create-home --shell /usr/sbin/nologin rookery
