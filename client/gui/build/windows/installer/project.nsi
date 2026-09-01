@@ -96,6 +96,10 @@ Section
 
     !insertmacro wails.files
 
+    # wintun.dll is loaded dynamically from beside the exe at runtime (not
+    # statically linked), so it has to ship alongside the main binary.
+    File "..\..\bin\wintun.dll"
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 

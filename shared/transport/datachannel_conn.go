@@ -12,6 +12,15 @@ import (
 // ErrClosed is returned by Read/Write after the connection has been closed.
 var ErrClosed = errors.New("transport: connection closed")
 
+// readChBuffer bounds how many inbound messages OnMessage can queue ahead of
+// Read() before it blocks. OnMessage runs on pion's own SCTP delivery
+// goroutine, so blocking there stalls receipt for every stream multiplexed
+// over this one DataChannel, not just the slow one — the receive-side
+// equivalent of the bufferedAmount backpressure Write already gets, sized
+// generously (smux's own per-stream window is 4MB) so a momentarily slow
+// consumer downstream doesn't choke unrelated streams.
+const readChBuffer = 2048
+
 // DataChannelConn adapts a single WebRTC DataChannel into an
 // io.ReadWriteCloser. Write applies bufferedAmount-based backpressure so a
 // fast sender cannot grow the DataChannel's outbound queue without bound:
@@ -39,7 +48,7 @@ func NewDataChannelConn(dc *webrtc.DataChannel, lowThresholdBytes, highWaterMark
 		dc:            dc,
 		highWaterMark: highWaterMarkBytes,
 		lowSignal:     make(chan struct{}, 1),
-		readCh:        make(chan []byte, 64),
+		readCh:        make(chan []byte, readChBuffer),
 		closeCh:       make(chan struct{}),
 	}
 
