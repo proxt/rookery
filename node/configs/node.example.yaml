@@ -1,0 +1,30 @@
+# Copy to node.yaml and fill in real values. node.yaml is gitignored.
+
+# Address the HTTP signaling server binds to. Caddy terminates TLS in front
+# of this and reverse-proxies to it; keep it loopback-only.
+listen_addr: "127.0.0.1:8080"
+
+# Single fixed UDP port for ICE (SettingEngine.SetICEUDPMux). Open this port
+# in the firewall; no ephemeral range is used.
+ice_udp_port: 51000
+
+# Pre-shared HMAC secret for signaling requests (X-Signature/X-Timestamp).
+# Prefer secret_env over committing a literal secret to disk.
+secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
+secret_env: ""
+
+# Maximum concurrent smux streams accepted per peer session.
+max_streams_per_session: 256
+
+# Timeout for the outbound dial a relay stream performs.
+dial_timeout_seconds: 10
+
+# DataChannel backpressure thresholds, in KB of bufferedAmount.
+buffered_amount_low_kb: 256
+buffered_amount_high_kb: 1024
+
+# Refuse to dial RFC1918/loopback/link-local destinations. Keep this true
+# unless you specifically intend to expose your internal network.
+allow_private_net: false
+
+log_level: "info"

@@ -1,0 +1,23 @@
+# Build artifacts
+/bin/
+*.exe
+*.dll
+
+# Real configs (examples are tracked, real ones are not)
+node/configs/node.yaml
+client/configs/client.yaml
+
+# Wails / frontend
+client/gui/build/
+client/gui/frontend/dist/
+client/gui/frontend/node_modules/
+
+# Go
+*.test
+*.out
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
