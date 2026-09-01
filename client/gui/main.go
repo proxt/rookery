@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"os"
 
 	"fyne.io/systray"
 
@@ -16,6 +17,12 @@ import (
 var assets embed.FS
 
 func main() {
+	if !acquireSingleInstanceLock() {
+		// Another instance is already running; just exit rather than
+		// opening a second window/tray icon on top of it.
+		os.Exit(0)
+	}
+
 	app := NewApp()
 
 	go systray.Run(func() { setupTray(app) }, func() {})
@@ -23,9 +30,9 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:     "Rookery",
 		Width:     440,
-		Height:    640,
+		Height:    700,
 		MinWidth:  380,
-		MinHeight: 560,
+		MinHeight: 600,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

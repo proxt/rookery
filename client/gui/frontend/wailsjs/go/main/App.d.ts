@@ -3,18 +3,24 @@
 import {main} from '../models';
 import {engine} from '../models';
 
+export function AddProfileFromLink(arg1:string):Promise<main.Profile>;
+
 export function Connect():Promise<void>;
+
+export function DeleteProfile(arg1:string):Promise<void>;
 
 export function Disconnect():Promise<void>;
 
-export function GetSettings():Promise<main.Settings>;
+export function GetAppSettings():Promise<main.AppSettings>;
 
 export function GetStatus():Promise<engine.StatusSnapshot>;
 
-export function ParseLink(arg1:string):Promise<main.Settings>;
+export function OpenURL(arg1:string):Promise<void>;
 
 export function Quit():Promise<void>;
 
-export function SaveSettings(arg1:main.Settings):Promise<void>;
+export function SaveGeneralSettings(arg1:number,arg2:boolean,arg3:boolean,arg4:boolean):Promise<void>;
+
+export function SetActiveProfile(arg1:string):Promise<void>;
 
 export function Show():Promise<void>;

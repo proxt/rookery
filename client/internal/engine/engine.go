@@ -50,6 +50,10 @@ type Config struct {
 	BufferedAmountLowThreshold  uint64
 	BufferedAmountHighWaterMark uint64
 	ReconnectMaxBackoff         time.Duration
+	// SystemWide routes all of the OS's traffic through a virtual network
+	// adapter instead of requiring apps to be configured for the SOCKS5
+	// proxy individually. Requires administrator privileges.
+	SystemWide bool
 }
 
 // StatusSnapshot is a point-in-time read of the tunnel's status.
@@ -148,6 +152,11 @@ func (e *Engine) Start(ctx context.Context, cfg Config) error {
 	go func() { defer e.wg.Done(); e.acceptSOCKS(innerCtx, listener) }()
 	go func() { defer e.wg.Done(); e.connectLoop(innerCtx, cfg) }()
 	go func() { defer e.wg.Done(); e.statsLoop(innerCtx) }()
+
+	if cfg.SystemWide {
+		e.wg.Add(1)
+		go func() { defer e.wg.Done(); e.runSystemCapture(innerCtx, cfg) }()
+	}
 
 	return nil
 }

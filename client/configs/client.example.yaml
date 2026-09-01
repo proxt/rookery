@@ -28,4 +28,9 @@ reconnect_max_backoff_seconds: 30
 start_minimized: false
 auto_start: false
 
+# Routes all of the OS's traffic through a virtual network adapter instead
+# of just apps configured for the SOCKS5 proxy above. Needs administrator
+# rights (the GUI's exe manifest requests elevation; run the CLI as Admin).
+system_wide: false
+
 log_level: "info"

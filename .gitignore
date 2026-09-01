@@ -2,13 +2,16 @@
 /bin/
 *.exe
 *.dll
+!client/gui/wintun/wintun.dll
 
 # Real configs (examples are tracked, real ones are not)
 node/configs/node.yaml
 client/configs/client.yaml
 
-# Wails / frontend
-client/gui/build/
+# Wails / frontend — build/bin and build/windows/tasklist.json are real
+# generated output; build/appicon.png, build/windows/icon.ico, and
+# build/windows/wails.exe.manifest are source assets Wails reads, not output.
+client/gui/build/bin/
 client/gui/frontend/dist/
 client/gui/frontend/node_modules/
 

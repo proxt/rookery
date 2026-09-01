@@ -21,6 +21,7 @@ type Config struct {
 	ReconnectMaxBackoffS int    `yaml:"reconnect_max_backoff_seconds"`
 	StartMinimized       bool   `yaml:"start_minimized"`
 	AutoStart            bool   `yaml:"auto_start"`
+	SystemWide           bool   `yaml:"system_wide"`
 	LogLevel             string `yaml:"log_level"`
 }
 

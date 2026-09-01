@@ -47,6 +47,7 @@ func run() error {
 		BufferedAmountLowThreshold:  uint64(cfg.BufferedAmountLowKB) * 1024,
 		BufferedAmountHighWaterMark: uint64(cfg.BufferedAmountHighKB) * 1024,
 		ReconnectMaxBackoff:         time.Duration(cfg.ReconnectMaxBackoffS) * time.Second,
+		SystemWide:                  cfg.SystemWide,
 	}
 
 	if err := eng.Start(ctx, engCfg); err != nil {
