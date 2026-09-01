@@ -1,4 +1,9 @@
 # Copy to client.yaml and fill in real values. client.yaml is gitignored.
+#
+# The GUI doesn't need this file edited by hand: paste a rookery:// link
+# (from the node's admin panel) into Settings and it fills in node_addr,
+# user_id, and secret for you. This file matters for the headless CLI, or if
+# you'd rather configure by hand.
 
 # Node's public signaling address, e.g. https://vpn.example.com
 node_addr: "https://your-node-hostname.example.com"
@@ -6,8 +11,11 @@ node_addr: "https://your-node-hostname.example.com"
 # Local SOCKS5 listener address.
 socks_addr: "127.0.0.1:1080"
 
-# Pre-shared HMAC secret, must match the node's secret.
-secret: "CHANGE_ME_TO_A_LONG_RANDOM_SECRET"
+# User ID and secret from the node's admin panel (Users → your user →
+# "Скопировать ссылку" — decode the rookery:// link, or read them off the
+# admin panel directly).
+user_id: ""
+secret: ""
 secret_env: ""
 
 # DataChannel backpressure thresholds, in KB of bufferedAmount.

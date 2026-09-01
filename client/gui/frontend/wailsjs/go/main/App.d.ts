@@ -11,6 +11,8 @@ export function GetSettings():Promise<main.Settings>;
 
 export function GetStatus():Promise<engine.StatusSnapshot>;
 
+export function ParseLink(arg1:string):Promise<main.Settings>;
+
 export function Quit():Promise<void>;
 
 export function SaveSettings(arg1:main.Settings):Promise<void>;

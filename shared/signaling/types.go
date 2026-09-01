@@ -2,9 +2,11 @@
 // the node's HTTP signaling endpoint.
 package signaling
 
-// SessionRequest is the body of POST /session: a client's SDP offer.
+// SessionRequest is the body of POST /session: a client's SDP offer, signed
+// with the secret belonging to UserID.
 type SessionRequest struct {
-	SDP string `json:"sdp"`
+	UserID string `json:"user_id"`
+	SDP    string `json:"sdp"`
 }
 
 // SessionResponse is the node's reply: its SDP answer.

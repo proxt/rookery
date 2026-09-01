@@ -15,6 +15,7 @@ import (
 
 	"github.com/rookery/client/internal/config"
 	"github.com/rookery/client/internal/engine"
+	"github.com/rookery/shared/profile"
 )
 
 // defaultSOCKSPort is used whenever no SOCKS port has been configured yet.
@@ -29,8 +30,10 @@ const (
 
 // Settings is the subset of the client config the GUI settings panel edits.
 type Settings struct {
+	ProfileName    string `json:"profileName"`
 	NodeAddr       string `json:"nodeAddr"`
 	SOCKSPort      int    `json:"socksPort"`
+	UserID         string `json:"userId"`
 	Secret         string `json:"secret"`
 	AutoStart      bool   `json:"autoStart"`
 	StartMinimized bool   `json:"startMinimized"`
@@ -86,8 +89,8 @@ func (a *App) Connect() error {
 	if err != nil {
 		return fmt.Errorf("load settings: %w", err)
 	}
-	if settings.NodeAddr == "" || settings.Secret == "" {
-		return fmt.Errorf("сначала укажите адрес ноды и секрет в настройках")
+	if settings.NodeAddr == "" || settings.UserID == "" || settings.Secret == "" {
+		return fmt.Errorf("сначала добавьте профиль по ссылке rookery:// в настройках")
 	}
 
 	cfg := settingsToEngineConfig(settings)
@@ -145,6 +148,27 @@ func (a *App) SaveSettings(settings Settings) error {
 	return nil
 }
 
+// ParseLink decodes a rookery:// profile link (from the node's admin panel)
+// into Settings, without saving it — the frontend previews it and the user
+// still has to call SaveSettings to persist it.
+func (a *App) ParseLink(link string) (Settings, error) {
+	current, err := a.GetSettings()
+	if err != nil {
+		current = Settings{SOCKSPort: defaultSOCKSPort}
+	}
+
+	l, err := profile.Decode(link)
+	if err != nil {
+		return Settings{}, fmt.Errorf("некорректная ссылка: %w", err)
+	}
+
+	current.ProfileName = l.Name
+	current.NodeAddr = l.NodeAddr
+	current.UserID = l.UserID
+	current.Secret = l.Secret
+	return current, nil
+}
+
 // Show brings the main window to the foreground.
 func (a *App) Show() {
 	runtime.WindowShow(a.ctx)
@@ -166,8 +190,10 @@ func configToSettings(cfg config.Config) Settings {
 		}
 	}
 	return Settings{
+		ProfileName:    cfg.ProfileName,
 		NodeAddr:       cfg.NodeAddr,
 		SOCKSPort:      port,
+		UserID:         cfg.UserID,
 		Secret:         cfg.Secret,
 		AutoStart:      cfg.AutoStart,
 		StartMinimized: cfg.StartMinimized,
@@ -180,8 +206,10 @@ func settingsToConfig(s Settings) config.Config {
 		port = defaultSOCKSPort
 	}
 	return config.Config{
+		ProfileName:          s.ProfileName,
 		NodeAddr:             s.NodeAddr,
 		SOCKSAddr:            fmt.Sprintf("127.0.0.1:%d", port),
+		UserID:               s.UserID,
 		Secret:               s.Secret,
 		BufferedAmountLowKB:  defaultBufferedAmountLowKB,
 		BufferedAmountHighKB: defaultBufferedAmountHighKB,
@@ -197,6 +225,7 @@ func settingsToEngineConfig(s Settings) engine.Config {
 	return engine.Config{
 		NodeAddr:                    cfg.NodeAddr,
 		SOCKSAddr:                   cfg.SOCKSAddr,
+		UserID:                      cfg.UserID,
 		Secret:                      cfg.Secret,
 		BufferedAmountLowThreshold:  uint64(cfg.BufferedAmountLowKB) * 1024,
 		BufferedAmountHighWaterMark: uint64(cfg.BufferedAmountHighKB) * 1024,

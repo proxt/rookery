@@ -30,8 +30,10 @@ export namespace engine {
 export namespace main {
 	
 	export class Settings {
+	    profileName: string;
 	    nodeAddr: string;
 	    socksPort: number;
+	    userId: string;
 	    secret: string;
 	    autoStart: boolean;
 	    startMinimized: boolean;
@@ -42,8 +44,10 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.profileName = source["profileName"];
 	        this.nodeAddr = source["nodeAddr"];
 	        this.socksPort = source["socksPort"];
+	        this.userId = source["userId"];
 	        this.secret = source["secret"];
 	        this.autoStart = source["autoStart"];
 	        this.startMinimized = source["startMinimized"];

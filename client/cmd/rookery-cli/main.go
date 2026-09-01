@@ -42,6 +42,7 @@ func run() error {
 	engCfg := engine.Config{
 		NodeAddr:                    cfg.NodeAddr,
 		SOCKSAddr:                   cfg.SOCKSAddr,
+		UserID:                      cfg.UserID,
 		Secret:                      cfg.Secret,
 		BufferedAmountLowThreshold:  uint64(cfg.BufferedAmountLowKB) * 1024,
 		BufferedAmountHighWaterMark: uint64(cfg.BufferedAmountHighKB) * 1024,

@@ -18,6 +18,10 @@ export function GetStatus() {
   return window['go']['main']['App']['GetStatus']();
 }
 
+export function ParseLink(arg1) {
+  return window['go']['main']['App']['ParseLink'](arg1);
+}
+
 export function Quit() {
   return window['go']['main']['App']['Quit']();
 }

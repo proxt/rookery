@@ -1,25 +1,38 @@
 <script>
   import { fade, fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
+  import { ParseLink } from '../../wailsjs/go/main/App.js'
 
   let { open = false, settings = {}, onsave, onclose } = $props()
 
+  let profileName = $state('')
   let nodeAddr = $state('')
-  let socksPort = $state(1080)
+  let userId = $state('')
   let secret = $state('')
+  let socksPort = $state(1080)
   let autoStart = $state(false)
   let startMinimized = $state(false)
+
+  let linkInput = $state('')
+  let importError = $state('')
+  let saveError = $state('')
   let saving = $state(false)
-  let error = $state('')
+  let importing = $state(false)
+
+  const hasProfile = $derived(!!nodeAddr && !!userId && !!secret)
 
   $effect(() => {
     if (open) {
+      profileName = settings.profileName ?? ''
       nodeAddr = settings.nodeAddr ?? ''
-      socksPort = settings.socksPort ?? 1080
+      userId = settings.userId ?? ''
       secret = settings.secret ?? ''
+      socksPort = settings.socksPort ?? 1080
       autoStart = settings.autoStart ?? false
       startMinimized = settings.startMinimized ?? false
-      error = ''
+      linkInput = ''
+      importError = ''
+      saveError = ''
     }
   })
 
@@ -27,20 +40,41 @@
     if (open && e.key === 'Escape') onclose()
   }
 
+  async function handleImport() {
+    const link = linkInput.trim()
+    if (!link) return
+    importError = ''
+    importing = true
+    try {
+      const parsed = await ParseLink(link)
+      profileName = parsed.profileName
+      nodeAddr = parsed.nodeAddr
+      userId = parsed.userId
+      secret = parsed.secret
+      linkInput = ''
+    } catch (e) {
+      importError = 'Не удалось разобрать ссылку — проверьте, что она скопирована целиком'
+    } finally {
+      importing = false
+    }
+  }
+
   async function handleSave() {
     saving = true
-    error = ''
+    saveError = ''
     try {
       await onsave({
+        profileName,
         nodeAddr,
         socksPort: Number(socksPort),
+        userId,
         secret,
         autoStart,
         startMinimized,
       })
       onclose()
     } catch (e) {
-      error = String(e)
+      saveError = String(e)
     } finally {
       saving = false
     }
@@ -70,25 +104,42 @@
         Настройки
       </h2>
 
-      <label class="mb-3 block">
-        <span class="mb-1 block text-xs text-muted">Адрес ноды</span>
-        <input
-          class="input"
-          type="text"
-          placeholder="https://node.example.com"
-          autocomplete="off"
-          bind:value={nodeAddr}
-        />
-      </label>
+      <div class="mb-3">
+        <span class="mb-1 block text-xs text-muted">Профиль</span>
+        {#if hasProfile}
+          <div class="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
+            <div class="font-medium">{profileName || 'Без названия'}</div>
+            <div class="truncate text-xs text-muted">{nodeAddr}</div>
+          </div>
+        {:else}
+          <div class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted">
+            Профиль ещё не добавлен — вставьте ссылку ниже
+          </div>
+        {/if}
+      </div>
 
-      <label class="mb-3 block">
-        <span class="mb-1 block text-xs text-muted">Порт SOCKS</span>
-        <input class="input" type="number" min="1" max="65535" bind:value={socksPort} />
+      <label class="mb-4 block">
+        <span class="mb-1 block text-xs text-muted">Ссылка профиля (rookery://…)</span>
+        <div class="flex gap-2">
+          <input
+            class="input"
+            type="text"
+            placeholder="rookery://…"
+            autocomplete="off"
+            bind:value={linkInput}
+          />
+          <button class="btn-secondary shrink-0" onclick={handleImport} disabled={importing}>
+            Вставить
+          </button>
+        </div>
+        {#if importError}
+          <p class="mt-2 text-xs text-state-error" transition:fade={{ duration: 150 }}>{importError}</p>
+        {/if}
       </label>
 
       <label class="mb-4 block">
-        <span class="mb-1 block text-xs text-muted">Секрет</span>
-        <input class="input" type="password" autocomplete="off" bind:value={secret} />
+        <span class="mb-1 block text-xs text-muted">Порт SOCKS</span>
+        <input class="input" type="number" min="1" max="65535" bind:value={socksPort} />
       </label>
 
       <label class="mb-2 flex items-center justify-between">
@@ -101,8 +152,8 @@
         <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={startMinimized} />
       </label>
 
-      {#if error}
-        <p class="mb-3 text-xs text-state-error" transition:fade={{ duration: 150 }}>{error}</p>
+      {#if saveError}
+        <p class="mb-3 text-xs text-state-error">{saveError}</p>
       {/if}
 
       <div class="flex justify-end gap-2">

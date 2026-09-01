@@ -1,6 +1,6 @@
-// Package server runs the node's HTTP signaling endpoint: it authenticates
-// SDP offers, answers them, and hands established peers off to the session
-// package.
+// Package server runs the node's HTTP signaling endpoint and admin panel: it
+// authenticates SDP offers per-user, answers them, and hands established
+// peers off to the session package.
 package server
 
 import (
@@ -16,7 +16,9 @@ import (
 
 	"github.com/pion/webrtc/v4"
 
+	"github.com/rookery/node/internal/admin"
 	"github.com/rookery/node/internal/session"
+	"github.com/rookery/node/internal/store"
 	"github.com/rookery/shared/signaling"
 	"github.com/rookery/shared/transport"
 )
@@ -32,7 +34,6 @@ const gatherTimeout = 10 * time.Second
 // Config controls the signaling server and the sessions it spawns.
 type Config struct {
 	ListenAddr                  string
-	Secret                      string
 	ICEUDPPort                  int
 	MaxStreamsPerSession        int
 	DialTimeout                 time.Duration
@@ -42,10 +43,10 @@ type Config struct {
 	DataChannelOpenTimeout      time.Duration
 }
 
-// Server is the node's HTTP signaling endpoint.
+// Server is the node's HTTP signaling endpoint and admin panel.
 type Server struct {
 	cfg          Config
-	secret       []byte
+	store        *store.Store
 	api          *webrtc.API
 	udpMuxCloser io.Closer
 	httpSrv      *http.Server
@@ -53,9 +54,10 @@ type Server struct {
 	wg           sync.WaitGroup
 }
 
-// New builds a Server bound to cfg.ICEUDPPort. It does not start listening
-// until Serve is called.
-func New(cfg Config) (*Server, error) {
+// New builds a Server bound to cfg.ICEUDPPort, backed by st for per-user
+// authentication and the admin panel. It does not start listening until
+// Serve is called.
+func New(cfg Config, st *store.Store) (*Server, error) {
 	api, udpMuxCloser, err := transport.NewNodeAPI(cfg.ICEUDPPort)
 	if err != nil {
 		return nil, fmt.Errorf("server: %w", err)
@@ -63,7 +65,7 @@ func New(cfg Config) (*Server, error) {
 
 	s := &Server{
 		cfg:          cfg,
-		secret:       []byte(cfg.Secret),
+		store:        st,
 		api:          api,
 		udpMuxCloser: udpMuxCloser,
 		rootCtx:      context.Background(),
@@ -71,6 +73,7 @@ func New(cfg Config) (*Server, error) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /session", s.handleSession)
+	admin.NewServer(st).RegisterRoutes(mux)
 	s.httpSrv = &http.Server{Addr: cfg.ListenAddr, Handler: mux}
 
 	return s, nil
@@ -111,14 +114,14 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.authenticate(r, body); err != nil {
-		slog.Debug("server: rejected unauthenticated request", "error", err, "remote", r.RemoteAddr)
+	var req signaling.SessionRequest
+	if err := json.Unmarshal(body, &req); err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	var req signaling.SessionRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	if err := s.authenticate(r, req.UserID, body); err != nil {
+		slog.Debug("server: rejected unauthenticated request", "error", err, "remote", r.RemoteAddr)
 		http.NotFound(w, r)
 		return
 	}
@@ -195,9 +198,19 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// authenticate verifies the X-Signature/X-Timestamp headers against body.
-func (s *Server) authenticate(r *http.Request, body []byte) error {
+// authenticate verifies the X-Signature/X-Timestamp headers against body,
+// using the secret belonging to userID.
+func (s *Server) authenticate(r *http.Request, userID string, body []byte) error {
+	if userID == "" {
+		return fmt.Errorf("server: missing user id")
+	}
+
+	u, err := s.store.GetUser(userID)
+	if err != nil {
+		return fmt.Errorf("server: unknown user: %w", err)
+	}
+
 	sig := r.Header.Get(signaling.HeaderSignature)
 	ts := r.Header.Get(signaling.HeaderTimestamp)
-	return signaling.Verify(s.secret, ts, body, sig, time.Now())
+	return signaling.Verify([]byte(u.Secret), ts, body, sig, time.Now())
 }

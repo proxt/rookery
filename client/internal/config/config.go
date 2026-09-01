@@ -10,8 +10,10 @@ import (
 
 // Config is the client's runtime configuration.
 type Config struct {
+	ProfileName          string `yaml:"profile_name"`
 	NodeAddr             string `yaml:"node_addr"`
 	SOCKSAddr            string `yaml:"socks_addr"`
+	UserID               string `yaml:"user_id"`
 	Secret               string `yaml:"secret"`
 	SecretEnv            string `yaml:"secret_env"`
 	BufferedAmountLowKB  int    `yaml:"buffered_amount_low_kb"`
@@ -55,6 +57,9 @@ func (c *Config) Validate() error {
 	}
 	if c.SOCKSAddr == "" {
 		return fmt.Errorf("config: socks_addr is required")
+	}
+	if c.UserID == "" {
+		return fmt.Errorf("config: user_id is required")
 	}
 	if c.Secret == "" {
 		return fmt.Errorf("config: secret is required")

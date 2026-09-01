@@ -45,6 +45,7 @@ func (s State) String() string {
 type Config struct {
 	NodeAddr                    string
 	SOCKSAddr                   string
+	UserID                      string
 	Secret                      string
 	BufferedAmountLowThreshold  uint64
 	BufferedAmountHighWaterMark uint64

@@ -154,7 +154,7 @@ func (e *Engine) connectOnce(ctx context.Context, cfg Config) error {
 // exchangeSDP POSTs offerSDP to the node's signaling endpoint and returns its
 // answer SDP.
 func (e *Engine) exchangeSDP(ctx context.Context, cfg Config, offerSDP string) (string, error) {
-	reqBody, err := json.Marshal(signaling.SessionRequest{SDP: offerSDP})
+	reqBody, err := json.Marshal(signaling.SessionRequest{UserID: cfg.UserID, SDP: offerSDP})
 	if err != nil {
 		return "", fmt.Errorf("marshal offer: %w", err)
 	}

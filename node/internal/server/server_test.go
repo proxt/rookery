@@ -4,49 +4,67 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/rookery/node/internal/store"
 	"github.com/rookery/shared/signaling"
 )
 
-func newTestServer(secret string) *Server {
-	return &Server{secret: []byte(secret)}
+func newTestServer(t *testing.T) (*Server, store.User) {
+	t.Helper()
+
+	st, err := store.Open(filepath.Join(t.TempDir(), "rookery.db"))
+	if err != nil {
+		t.Fatalf("store.Open() error = %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+
+	u, err := st.CreateUser("test-user")
+	if err != nil {
+		t.Fatalf("CreateUser() error = %v", err)
+	}
+
+	return &Server{store: st}, u
 }
 
 func TestAuthenticateAcceptsValidSignature(t *testing.T) {
-	s := newTestServer("shared-secret")
-	body := []byte(`{"sdp":"v=0..."}`)
+	s, u := newTestServer(t)
+	body := []byte(`{"user_id":"` + u.ID + `","sdp":"v=0..."}`)
 	now := time.Now()
-	sig := signaling.Sign(s.secret, now.Unix(), body)
+	sig := signaling.Sign([]byte(u.Secret), now.Unix(), body)
 
 	r := httptest.NewRequest(http.MethodPost, "/session", nil)
 	r.Header.Set(signaling.HeaderTimestamp, strconv.FormatInt(now.Unix(), 10))
 	r.Header.Set(signaling.HeaderSignature, sig)
 
-	if err := s.authenticate(r, body); err != nil {
+	if err := s.authenticate(r, u.ID, body); err != nil {
 		t.Fatalf("authenticate() error = %v, want nil", err)
 	}
 }
 
 func TestAuthenticateRejectsInvalidRequests(t *testing.T) {
-	s := newTestServer("shared-secret")
-	body := []byte(`{"sdp":"v=0..."}`)
+	s, u := newTestServer(t)
+	body := []byte(`{"user_id":"` + u.ID + `","sdp":"v=0..."}`)
 	now := time.Now()
-	validSig := signaling.Sign(s.secret, now.Unix(), body)
+	validSig := signaling.Sign([]byte(u.Secret), now.Unix(), body)
 
 	cases := []struct {
 		name      string
+		userID    string
 		timestamp string
 		signature string
 	}{
-		{"missing-headers", "", ""},
-		{"missing-signature", strconv.FormatInt(now.Unix(), 10), ""},
-		{"missing-timestamp", "", validSig},
-		{"wrong-secret-signature", strconv.FormatInt(now.Unix(), 10), signaling.Sign([]byte("other-secret"), now.Unix(), body)},
-		{"expired-timestamp", strconv.FormatInt(now.Add(-time.Hour).Unix(), 10), signaling.Sign(s.secret, now.Add(-time.Hour).Unix(), body)},
-		{"garbage-signature", strconv.FormatInt(now.Unix(), 10), "not-hex!!"},
+		{"missing-headers", u.ID, "", ""},
+		{"missing-signature", u.ID, strconv.FormatInt(now.Unix(), 10), ""},
+		{"missing-timestamp", u.ID, "", validSig},
+		{"unknown-user", "no-such-user", strconv.FormatInt(now.Unix(), 10), validSig},
+		{"empty-user", "", strconv.FormatInt(now.Unix(), 10), validSig},
+		{"wrong-secret-signature", u.ID, strconv.FormatInt(now.Unix(), 10), signaling.Sign([]byte("other-secret"), now.Unix(), body)},
+		{"expired-timestamp", u.ID, strconv.FormatInt(now.Add(-time.Hour).Unix(), 10), signaling.Sign([]byte(u.Secret), now.Add(-time.Hour).Unix(), body)},
+		{"garbage-signature", u.ID, strconv.FormatInt(now.Unix(), 10), "not-hex!!"},
 	}
 
 	for _, tc := range cases {
@@ -55,7 +73,7 @@ func TestAuthenticateRejectsInvalidRequests(t *testing.T) {
 			r.Header.Set(signaling.HeaderTimestamp, tc.timestamp)
 			r.Header.Set(signaling.HeaderSignature, tc.signature)
 
-			if err := s.authenticate(r, body); err == nil {
+			if err := s.authenticate(r, tc.userID, body); err == nil {
 				t.Fatalf("authenticate() expected error, got nil")
 			}
 		})
@@ -63,11 +81,11 @@ func TestAuthenticateRejectsInvalidRequests(t *testing.T) {
 }
 
 func TestHandleSessionReturnsNotFoundForUnauthenticatedRequest(t *testing.T) {
-	s := newTestServer("shared-secret")
+	s, _ := newTestServer(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /session", s.handleSession)
 
-	body := []byte(`{"sdp":"v=0..."}`)
+	body := []byte(`{"user_id":"nobody","sdp":"v=0..."}`)
 	r := httptest.NewRequest(http.MethodPost, "/session", bytes.NewReader(body))
 	r.Header.Set(signaling.HeaderTimestamp, "not-a-timestamp")
 	r.Header.Set(signaling.HeaderSignature, "not-a-signature")
