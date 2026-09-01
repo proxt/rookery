@@ -93,9 +93,10 @@ openssl rand -hex 32
 объявит клиентам внутренний Docker-адрес контейнера вместо публичного IP VDS,
 и подключение не установится.
 
-Первый пуш в `master` также нужно один раз сделать публичным пакет в GitHub
-(Packages → rookery-node → Package settings → Change visibility → Public),
-иначе `docker pull` на VDS потребует `docker login` в ghcr.io.
+Пакет `ghcr.io/proxt/rookery-node` публичный, `docker pull` на VDS работает
+без `docker login`. Если у себя в форке пакет окажется приватным — сделать
+публичным можно на странице пакета в GitHub (Packages → rookery-node →
+Package settings → Change visibility).
 
 ### Локальная сборка из исходников (для разработки/тестов)
 
