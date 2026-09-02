@@ -11,10 +11,8 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 		name string
 		l    Link
 	}{
-		{"basic", Link{NodeAddr: "https://vpn.example.com", UserID: "abc123", Secret: "s3cr3t"}},
-		{"with-name", Link{NodeAddr: "https://vpn.example.com", UserID: "abc123", Secret: "s3cr3t", Name: "My Laptop"}},
-		{"name-with-special-chars", Link{NodeAddr: "https://vpn.example.com", UserID: "u1", Secret: "s1", Name: "Home & Office #1"}},
-		{"unicode-name", Link{NodeAddr: "https://vpn.example.com", UserID: "u1", Secret: "s1", Name: "Ноутбук"}},
+		{"basic", Link{PanelAddr: "https://panel.example.com", Token: "abc123"}},
+		{"different-token", Link{PanelAddr: "https://panel.example.com", Token: "s3cr3ttoken"}},
 	}
 
 	for _, tc := range cases {
@@ -31,6 +29,13 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	}
 }
 
+func TestEncodeUsesSubPrefix(t *testing.T) {
+	link := Encode(Link{PanelAddr: "https://panel.example.com", Token: "abc123"})
+	if want := "rookery://sub/"; link[:len(want)] != want {
+		t.Fatalf("Encode() = %q, want prefix %q", link, want)
+	}
+}
+
 func TestDecodeGarbageInput(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -41,10 +46,11 @@ func TestDecodeGarbageInput(t *testing.T) {
 		{"whitespace-only", "   ", ErrEmptyLink},
 		{"wrong-scheme", "vmess://eyJhIjoxfQ", ErrInvalidScheme},
 		{"no-scheme", "eyJhIjoxfQ", ErrInvalidScheme},
-		{"not-base64", "rookery://not-valid-base64!!!", nil},
-		{"base64-but-not-json", "rookery://" + "bm90LWpzb24", nil},
-		{"missing-fields", "rookery://" + encodeRaw(`{"n":"https://x.com"}`), nil},
-		{"empty-json", "rookery://" + encodeRaw(`{}`), nil},
+		{"old-scheme-no-sub", "rookery://eyJhIjoxfQ", ErrInvalidScheme},
+		{"not-base64", "rookery://sub/not-valid-base64!!!", nil},
+		{"base64-but-not-json", "rookery://sub/" + "bm90LWpzb24", nil},
+		{"missing-fields", "rookery://sub/" + encodeRaw(`{"p":"https://x.com"}`), nil},
+		{"empty-json", "rookery://sub/" + encodeRaw(`{}`), nil},
 	}
 
 	for _, tc := range cases {
@@ -61,12 +67,12 @@ func TestDecodeGarbageInput(t *testing.T) {
 }
 
 func TestDecodeTrimsWhitespace(t *testing.T) {
-	link := Encode(Link{NodeAddr: "https://vpn.example.com", UserID: "u1", Secret: "s1"})
+	link := Encode(Link{PanelAddr: "https://panel.example.com", Token: "u1"})
 	got, err := Decode("  " + link + "\n")
 	if err != nil {
 		t.Fatalf("Decode() error = %v", err)
 	}
-	if got.NodeAddr != "https://vpn.example.com" {
+	if got.PanelAddr != "https://panel.example.com" {
 		t.Fatalf("got %+v", got)
 	}
 }

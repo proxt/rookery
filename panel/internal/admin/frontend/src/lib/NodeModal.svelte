@@ -78,8 +78,12 @@
       {#if node}
         <div class="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2.5">
           <span class="text-sm">Включена</span>
-          <button class="relative h-6 w-11 rounded-full transition-colors cursor-pointer {enabled ? 'bg-up' : 'bg-surface-3'}" onclick={() => (enabled = !enabled)} aria-label="Переключить">
-            <span class="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform {enabled ? 'translate-x-5' : 'translate-x-0.5'}"></span>
+          <button
+            class="flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors cursor-pointer {enabled ? 'justify-end bg-up' : 'justify-start bg-surface-3'}"
+            onclick={() => (enabled = !enabled)}
+            aria-label="Переключить"
+          >
+            <span class="h-5 w-5 rounded-full bg-white shadow transition-transform"></span>
           </button>
         </div>
 

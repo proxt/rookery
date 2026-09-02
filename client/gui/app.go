@@ -127,8 +127,14 @@ func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, syst
 	return setAutoStart(autoStart)
 }
 
-// AddProfileFromLink decodes a rookery:// link and adds it as a new saved
-// profile. If it's the first profile, it becomes the active one.
+// AddProfileFromLink decodes a rookery://sub/... link and adds it as a new
+// saved profile. If it's the first profile, it becomes the active one.
+//
+// TODO(phase 2): a link now points at a panel subscription (PanelAddr +
+// Token), not a single node's address/user id/secret directly. This just
+// keeps the app compiling with a placeholder mapping; the real Phase 2 work
+// is fetching the node list from PanelAddr+"/sub/"+Token, letting the user
+// pick one, and refreshing it periodically — see the plan's Phase 2.
 func (a *App) AddProfileFromLink(link string) (Profile, error) {
 	l, err := profile.Decode(link)
 	if err != nil {
@@ -145,12 +151,7 @@ func (a *App) AddProfileFromLink(link string) (Profile, error) {
 		return Profile{}, err
 	}
 
-	name := l.Name
-	if name == "" {
-		name = "Без названия"
-	}
-
-	p := Profile{ID: id, Name: name, NodeAddr: l.NodeAddr, UserID: l.UserID, Secret: l.Secret}
+	p := Profile{ID: id, Name: "Без названия", NodeAddr: l.PanelAddr, UserID: "", Secret: l.Token}
 	settings.Profiles = append(settings.Profiles, p)
 	if settings.ActiveProfileID == "" {
 		settings.ActiveProfileID = p.ID

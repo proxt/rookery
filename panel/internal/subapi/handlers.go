@@ -5,12 +5,14 @@ package subapi
 
 import (
 	"encoding/json"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/rookery/panel/internal/store"
+	"github.com/rookery/shared/profile"
 	"github.com/rookery/shared/signaling"
 )
 
@@ -29,6 +31,7 @@ func NewServer(st *store.Store, tokenTTL time.Duration) *Server {
 // RegisterRoutes wires the public routes onto mux.
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sub/{token}", s.handleSub)
+	mux.HandleFunc("GET /sub-assets/logo.png", handleLogo)
 }
 
 type nodeOut struct {
@@ -79,8 +82,15 @@ func (s *Server) handleSub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if wantsHTML(r) {
+		publicAddr, err := s.store.PublicAddr()
+		if err != nil {
+			slog.Error("subapi: get public addr", "error", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		deepLink := profile.Encode(profile.Link{PanelAddr: publicAddr, Token: u.Token})
 		renderSubPage(w, subPageData{
-			Found: true, Name: u.Name, ExpiresAt: u.ExpiresAt, NodeCount: len(out.Nodes), SubURL: r.URL.String(),
+			Found: true, Name: u.Name, ExpiresAt: u.ExpiresAt, NodeCount: len(out.Nodes), DeepLink: template.URL(deepLink),
 		})
 		return
 	}

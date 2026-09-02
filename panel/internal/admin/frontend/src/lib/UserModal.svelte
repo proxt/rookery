@@ -17,6 +17,7 @@
   let enabled = $state(true)
   let startsAt = $state('')
   let expiresAt = $state('')
+  let unlimited = $state(true)
 
   // Nodes tab
   let selectedNodeIds = $state(new Set())
@@ -32,9 +33,17 @@
     enabled = user.enabled
     startsAt = toDatetimeLocal(user.starts_at)
     expiresAt = toDatetimeLocal(user.expires_at)
+    unlimited = !user.starts_at && !user.expires_at
     selectedNodeIds = new Set(user.nodes.map((n) => n.id))
   }
   load()
+
+  function onUnlimitedChange() {
+    if (unlimited) {
+      startsAt = ''
+      expiresAt = ''
+    }
+  }
 
   async function loadStats() {
     statsLoading = true
@@ -139,24 +148,29 @@
             <div class="flex items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2.5">
               <span class="text-sm">Подписка активна</span>
               <button
-                class="relative h-6 w-11 rounded-full transition-colors cursor-pointer {enabled ? 'bg-up' : 'bg-surface-3'}"
+                class="flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors cursor-pointer {enabled ? 'justify-end bg-up' : 'justify-start bg-surface-3'}"
                 onclick={() => (enabled = !enabled)}
                 aria-label="Переключить"
               >
-                <span class="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform {enabled ? 'translate-x-5' : 'translate-x-0.5'}"></span>
+                <span class="h-5 w-5 rounded-full bg-white shadow transition-transform"></span>
               </button>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="mb-1 block text-xs font-medium text-muted" for="u-starts">Начало</label>
-                <input id="u-starts" type="datetime-local" class="input" bind:value={startsAt} />
+                <input id="u-starts" type="datetime-local" class="input" bind:value={startsAt} disabled={unlimited} />
               </div>
               <div>
                 <label class="mb-1 block text-xs font-medium text-muted" for="u-expires">Окончание</label>
-                <input id="u-expires" type="datetime-local" class="input" bind:value={expiresAt} />
+                <input id="u-expires" type="datetime-local" class="input" bind:value={expiresAt} disabled={unlimited} />
               </div>
             </div>
+
+            <label class="flex cursor-pointer items-center gap-2 text-xs text-muted">
+              <input type="checkbox" class="h-3.5 w-3.5 accent-[var(--color-up)]" bind:checked={unlimited} onchange={onUnlimitedChange} />
+              Без ограничений по времени (бессрочная подписка)
+            </label>
 
             <div>
               <label class="mb-1 block text-xs font-medium text-muted" for="u-link">Ссылка подписки</label>

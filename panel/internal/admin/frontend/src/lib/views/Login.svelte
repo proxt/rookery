@@ -1,6 +1,7 @@
 <script>
   import { fade, fly } from 'svelte/transition'
   import { api } from '../api.js'
+  import logo from '../../assets/logo.png'
 
   let { onsuccess } = $props()
 
@@ -27,7 +28,7 @@
 <div class="flex min-h-screen items-center justify-center p-6">
   <form class="card w-full max-w-sm p-8" in:fly={{ y: 12, duration: 400, easing: (t) => 1 - Math.pow(1 - t, 3) }} onsubmit={submit}>
     <div class="mb-8 flex flex-col items-center gap-3">
-      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-up to-accent-2 text-lg font-bold text-white breathe">R</div>
+      <img src={logo} alt="" class="h-14 w-14 rounded-2xl breathe" />
       <div class="text-center">
         <div class="text-base font-semibold">Rookery Panel</div>
         <div class="text-xs text-muted">Вход для администратора</div>

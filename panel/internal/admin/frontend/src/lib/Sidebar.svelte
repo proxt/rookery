@@ -1,4 +1,5 @@
 <script>
+  import logo from '../assets/logo.png'
   let { active = 'dashboard', onselect, onlogout, adminUsername = '' } = $props()
 
   const items = [
@@ -11,7 +12,7 @@
 
 <aside class="flex w-56 shrink-0 flex-col border-r border-border bg-surface/60 backdrop-blur-sm">
   <div class="flex items-center gap-2.5 px-5 py-5">
-    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-up to-accent-2 text-sm font-bold text-white breathe">R</div>
+    <img src={logo} alt="" class="h-9 w-9 rounded-lg breathe" />
     <span class="text-sm font-semibold tracking-wide text-text">ROOKERY</span>
   </div>
 
