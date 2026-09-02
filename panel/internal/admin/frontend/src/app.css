@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b0d11;
+  --color-surface: #171a21;
+  --color-surface-2: #1e222b;
+  --color-surface-3: #262b36;
+  --color-border: #2a2f3a;
+  --color-text: #e5e7eb;
+  --color-muted: #8b93a1;
+
+  --color-up: #4f7cff;
+  --color-down: #22c55e;
+  --color-accent-2: #7c5cff;
+  --color-ok: #22c55e;
+  --color-warn: #d98e1c;
+  --color-danger: #e0453f;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% -10%, color-mix(in srgb, var(--color-up) 10%, transparent), transparent 45%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--color-accent-2) 8%, transparent), transparent 40%),
+    var(--color-bg);
+}
+
+/* Browser autofill (esp. Chrome/Edge) paints inputs with an opaque light
+   background + dark text by default, ignoring our own background — fixes
+   the login form looking broken in dark mode after the browser autofills
+   saved credentials. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-text
+           outline-none transition-all duration-200 focus:border-up focus:ring-2 focus:ring-up/20;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-up px-4 py-2 text-sm font-medium text-white transition-all duration-150
+           hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted
+           transition-all duration-150 hover:text-text hover:border-muted/50 active:scale-95
+           disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+
+  .btn-danger {
+    @apply rounded-lg border border-danger/40 px-4 py-2 text-sm font-medium text-danger
+           transition-all duration-150 hover:bg-danger/10 active:scale-95 cursor-pointer;
+  }
+
+  .card {
+    @apply rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-sm
+           shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset];
+  }
+
+  .icon-btn {
+    @apply flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-all duration-150
+           hover:bg-surface-2 hover:text-text active:scale-90 cursor-pointer;
+  }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fade-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.04); }
+}
+.breathe { animation: breathe 2.6s ease-in-out infinite; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 999px; border: 2px solid var(--color-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border); }

@@ -13,7 +13,7 @@ import (
 	"github.com/rookery/panel/internal/store"
 )
 
-//go:embed ui
+//go:embed all:frontend/dist
 var uiFS embed.FS
 
 const sessionCookieName = "rookery_admin_session"
@@ -56,7 +56,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/api/stats/users/{id}/series", s.requireAuth(s.handleStatsUserSeries))
 	mux.HandleFunc("GET /admin/api/stats/nodes/{id}", s.requireAuth(s.handleStatsNode))
 
-	uiSub, err := fs.Sub(uiFS, "ui")
+	uiSub, err := fs.Sub(uiFS, "frontend/dist")
 	if err != nil {
 		panic(err) // embedded at build time; cannot fail at runtime
 	}

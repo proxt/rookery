@@ -1,5 +1,12 @@
 # Build context is the repo root (needs ../shared alongside panel/), e.g.:
 #   docker build -f panel/Dockerfile -t rookery-panel .
+FROM node:20-alpine AS frontend
+WORKDIR /src/panel/internal/admin/frontend
+COPY panel/internal/admin/frontend/package.json panel/internal/admin/frontend/package-lock.json* ./
+RUN npm install
+COPY panel/internal/admin/frontend/ ./
+RUN npm run build
+
 FROM golang:1.27-alpine AS builder
 
 ENV GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64
@@ -7,6 +14,8 @@ WORKDIR /src
 
 COPY shared/ shared/
 COPY panel/ panel/
+# go:embed needs the built frontend present before `go build` runs.
+COPY --from=frontend /src/panel/internal/admin/frontend/dist panel/internal/admin/frontend/dist
 
 WORKDIR /src/panel
 RUN go build -o /out/rookeryp ./cmd/rookeryp

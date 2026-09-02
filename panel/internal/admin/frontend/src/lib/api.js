@@ -1,0 +1,63 @@
+// Thin fetch wrapper for the admin API. Auth is a cookie set by the server
+// on login, so every call just needs credentials included.
+
+class ApiError extends Error {
+  constructor(status, message) {
+    super(message || `request failed (${status})`)
+    this.status = status
+  }
+}
+
+async function request(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    credentials: 'same-origin',
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new ApiError(res.status, text)
+  }
+  if (res.status === 204) return null
+  const contentType = res.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) return res.json()
+  return null
+}
+
+export const api = {
+  ApiError,
+
+  login: (username, password) => request('POST', '/admin/api/login', { username, password }),
+  logout: () => request('POST', '/admin/api/logout'),
+  session: () => request('GET', '/admin/api/session'),
+
+  getSettings: () => request('GET', '/admin/api/settings'),
+  updateSettings: (publicAddr) => request('PUT', '/admin/api/settings', { public_addr: publicAddr }),
+  updateCredentials: (currentPassword, newUsername, newPassword) =>
+    request('PUT', '/admin/api/credentials', {
+      current_password: currentPassword,
+      new_username: newUsername,
+      new_password: newPassword,
+    }),
+
+  listUsers: () => request('GET', '/admin/api/users'),
+  getUser: (id) => request('GET', `/admin/api/users/${id}`),
+  createUser: (name) => request('POST', '/admin/api/users', { name }),
+  updateUser: (id, { name, enabled, startsAt, expiresAt }) =>
+    request('PUT', `/admin/api/users/${id}`, { name, enabled, starts_at: startsAt, expires_at: expiresAt }),
+  deleteUser: (id) => request('DELETE', `/admin/api/users/${id}`),
+  setUserNodes: (id, nodeIds) => request('PUT', `/admin/api/users/${id}/nodes`, { node_ids: nodeIds }),
+
+  listNodes: () => request('GET', '/admin/api/nodes'),
+  createNode: (name, address, tags) => request('POST', '/admin/api/nodes', { name, address, tags }),
+  updateNode: (id, { name, address, tags, enabled }) =>
+    request('PATCH', `/admin/api/nodes/${id}`, { name, address, tags, enabled }),
+  deleteNode: (id) => request('DELETE', `/admin/api/nodes/${id}`),
+
+  statsOverview: () => request('GET', '/admin/api/stats/overview'),
+  statsTimeSeries: (hours = 24) => request('GET', `/admin/api/stats/timeseries?hours=${hours}`),
+  statsUser: (id) => request('GET', `/admin/api/stats/users/${id}`),
+  statsUserSeries: (id, hours = 24) => request('GET', `/admin/api/stats/users/${id}/series?hours=${hours}`),
+  statsNode: (id) => request('GET', `/admin/api/stats/nodes/${id}`),
+}

@@ -15,6 +15,12 @@ client/gui/build/bin/
 client/gui/frontend/dist/
 client/gui/frontend/node_modules/
 
+# Panel admin frontend — built by the Docker image (see panel/Dockerfile);
+# go:embed needs dist/ present for a non-Docker local build, so build it
+# yourself first (npm install && npm run build in the frontend dir).
+panel/internal/admin/frontend/dist/
+panel/internal/admin/frontend/node_modules/
+
 # Go
 *.test
 *.out
