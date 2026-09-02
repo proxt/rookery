@@ -6,7 +6,7 @@
   import Sparkline from '../Sparkline.svelte'
   import StatIcon from '../StatIcon.svelte'
 
-  let { status, history, currentUp, currentDown, activeProfileName, ontoggle } = $props()
+  let { status, history, currentUp, currentDown, activeLabel, ontoggle } = $props()
 
   const stats = $derived([
     { label: 'RTT', value: status.rttNs ? formatDurationNs(status.rttNs) : '—', icon: 'activity' },
@@ -23,7 +23,7 @@
 <div class="flex flex-1 flex-col px-6 py-5">
   <header class="mb-1 text-center fade-in-up">
     <span class="text-xs uppercase tracking-widest text-muted">
-      {activeProfileName || 'Профиль не выбран'}
+      {activeLabel || 'Подписка не выбрана'}
     </span>
   </header>
 

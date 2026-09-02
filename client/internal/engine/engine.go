@@ -43,10 +43,18 @@ func (s State) String() string {
 
 // Config controls a single Start call.
 type Config struct {
-	NodeAddr                    string
-	SOCKSAddr                   string
-	UserID                      string
-	Secret                      string
+	// NodeAddr is the relay node's public base URL. Fixed for the lifetime
+	// of a Start call — picking a different node means Stop, then Start
+	// again with a new Config.
+	NodeAddr  string
+	SOCKSAddr string
+	// TokenFunc returns a session token authenticating this client to
+	// NodeAddr, valid at least at the moment it returns. Called before
+	// every signaling attempt (including reconnects), not just once, since
+	// panel-issued tokens expire — a typical implementation re-fetches the
+	// subscription from the panel each time rather than caching a token
+	// that might outlive its TTL.
+	TokenFunc                   func(ctx context.Context) (string, error)
 	BufferedAmountLowThreshold  uint64
 	BufferedAmountHighWaterMark uint64
 	ReconnectMaxBackoff         time.Duration

@@ -12,6 +12,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/rookery/client/internal/engine"
+	"github.com/rookery/client/internal/subscription"
 	"github.com/rookery/shared/profile"
 )
 
@@ -66,24 +67,53 @@ func (a *App) forwardEvents() {
 	}
 }
 
-// Connect starts the tunnel using the currently active profile and general
-// settings.
+// Connect starts the tunnel using the currently active subscription's
+// currently active node, and general settings. It re-fetches the
+// subscription first so the node's address (and the node list shown in the
+// UI) is current before dialing.
 func (a *App) Connect() error {
 	settings, err := a.GetAppSettings()
 	if err != nil {
 		return fmt.Errorf("load settings: %w", err)
 	}
 
-	active, ok := settings.ActiveProfile()
+	sub, ok := settings.ActiveSubscription()
 	if !ok {
-		return fmt.Errorf("сначала добавьте и выберите профиль на вкладке «Профили»")
+		return fmt.Errorf("сначала добавьте и выберите подписку на вкладке «Подписки»")
 	}
 
+	fetched, err := subscription.Fetch(a.ctx, sub.PanelAddr, sub.Token)
+	if err != nil {
+		return fmt.Errorf("не удалось получить список серверов подписки: %w", err)
+	}
+	if err := a.updateCachedNodes(sub.ID, fetched); err != nil {
+		return err
+	}
+
+	nodeID := sub.ActiveNodeID
+	node, ok := fetched.FindNode(nodeID)
+	if !ok {
+		if len(fetched.Nodes) == 0 {
+			return fmt.Errorf("в подписке нет доступных серверов")
+		}
+		node = fetched.Nodes[0]
+	}
+
+	panelAddr, token := sub.PanelAddr, sub.Token
 	cfg := engine.Config{
-		NodeAddr:                    active.NodeAddr,
-		SOCKSAddr:                   fmt.Sprintf("127.0.0.1:%d", effectivePort(settings.SOCKSPort)),
-		UserID:                      active.UserID,
-		Secret:                      active.Secret,
+		NodeAddr:  node.Address,
+		SOCKSAddr: fmt.Sprintf("127.0.0.1:%d", effectivePort(settings.SOCKSPort)),
+		TokenFunc: func(ctx context.Context) (string, error) {
+			s, err := subscription.Fetch(ctx, panelAddr, token)
+			if err != nil {
+				return "", err
+			}
+			n, ok := s.FindNode(node.ID)
+			if !ok {
+				return "", fmt.Errorf("сервер %q больше не входит в подписку", node.Name)
+			}
+			return n.SessionToken, nil
+		},
 		BufferedAmountLowThreshold:  defaultBufferedAmountLowKB * 1024,
 		BufferedAmountHighWaterMark: defaultBufferedAmountHighKB * 1024,
 		ReconnectMaxBackoff:         defaultReconnectMaxBackoffS * time.Second,
@@ -103,13 +133,15 @@ func (a *App) GetStatus() engine.StatusSnapshot {
 	return a.eng.Status()
 }
 
-// GetAppSettings reads all persisted settings (profiles + general options).
+// GetAppSettings reads all persisted settings (subscriptions + general
+// options).
 func (a *App) GetAppSettings() (AppSettings, error) {
 	return loadSettings(a.settingsPath)
 }
 
-// SaveGeneralSettings updates the profile-independent settings (SOCKS port,
-// autostart, start minimized, system-wide) without touching the profile list.
+// SaveGeneralSettings updates the subscription-independent settings (SOCKS
+// port, autostart, start minimized, system-wide) without touching the
+// subscription list.
 func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, systemWide bool) error {
 	settings, err := a.GetAppSettings()
 	if err != nil {
@@ -127,73 +159,146 @@ func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, syst
 	return setAutoStart(autoStart)
 }
 
-// AddProfileFromLink decodes a rookery://sub/... link and adds it as a new
-// saved profile. If it's the first profile, it becomes the active one.
-//
-// TODO(phase 2): a link now points at a panel subscription (PanelAddr +
-// Token), not a single node's address/user id/secret directly. This just
-// keeps the app compiling with a placeholder mapping; the real Phase 2 work
-// is fetching the node list from PanelAddr+"/sub/"+Token, letting the user
-// pick one, and refreshing it periodically — see the plan's Phase 2.
-func (a *App) AddProfileFromLink(link string) (Profile, error) {
+// AddSubscriptionFromLink decodes a rookery://sub/... link, fetches its
+// current node list, and adds it as a new saved subscription. If it's the
+// first subscription, it becomes the active one.
+func (a *App) AddSubscriptionFromLink(link string) (Subscription, error) {
 	l, err := profile.Decode(link)
 	if err != nil {
-		return Profile{}, fmt.Errorf("некорректная ссылка: %w", err)
+		return Subscription{}, fmt.Errorf("некорректная ссылка: %w", err)
+	}
+
+	fetched, err := subscription.Fetch(a.ctx, l.PanelAddr, l.Token)
+	if err != nil {
+		return Subscription{}, fmt.Errorf("не удалось получить подписку: %w", err)
 	}
 
 	settings, err := a.GetAppSettings()
 	if err != nil {
-		return Profile{}, err
+		return Subscription{}, err
 	}
 
 	id, err := randomID()
 	if err != nil {
-		return Profile{}, err
+		return Subscription{}, err
 	}
 
-	p := Profile{ID: id, Name: "Без названия", NodeAddr: l.PanelAddr, UserID: "", Secret: l.Token}
-	settings.Profiles = append(settings.Profiles, p)
-	if settings.ActiveProfileID == "" {
-		settings.ActiveProfileID = p.ID
+	name := fetched.Name
+	if name == "" {
+		name = "Без названия"
+	}
+	sub := Subscription{ID: id, Name: name, PanelAddr: l.PanelAddr, Token: l.Token, Nodes: cacheNodes(fetched.Nodes)}
+	if len(fetched.Nodes) > 0 {
+		sub.ActiveNodeID = fetched.Nodes[0].ID
+	}
+
+	settings.Subscriptions = append(settings.Subscriptions, sub)
+	if settings.ActiveSubscriptionID == "" {
+		settings.ActiveSubscriptionID = sub.ID
 	}
 
 	if err := saveSettings(a.settingsPath, settings); err != nil {
-		return Profile{}, err
+		return Subscription{}, err
 	}
-	return p, nil
+	return sub, nil
 }
 
-// DeleteProfile removes a saved profile. If it was the active one, no
-// profile is active afterward until the user picks another.
-func (a *App) DeleteProfile(id string) error {
+// RefreshSubscription re-fetches a subscription's node list from its panel
+// and updates the local cache.
+func (a *App) RefreshSubscription(id string) (Subscription, error) {
 	settings, err := a.GetAppSettings()
 	if err != nil {
-		return err
+		return Subscription{}, err
 	}
 
-	kept := settings.Profiles[:0]
-	for _, p := range settings.Profiles {
-		if p.ID != id {
-			kept = append(kept, p)
+	var target *Subscription
+	for i := range settings.Subscriptions {
+		if settings.Subscriptions[i].ID == id {
+			target = &settings.Subscriptions[i]
+			break
 		}
 	}
-	settings.Profiles = kept
+	if target == nil {
+		return Subscription{}, fmt.Errorf("подписка не найдена")
+	}
 
-	if settings.ActiveProfileID == id {
-		settings.ActiveProfileID = ""
+	fetched, err := subscription.Fetch(a.ctx, target.PanelAddr, target.Token)
+	if err != nil {
+		return Subscription{}, fmt.Errorf("не удалось обновить подписку: %w", err)
+	}
+	target.Nodes = cacheNodes(fetched.Nodes)
+	if _, ok := target.ActiveNode(); !ok && len(fetched.Nodes) > 0 {
+		target.ActiveNodeID = fetched.Nodes[0].ID
+	}
+
+	if err := saveSettings(a.settingsPath, settings); err != nil {
+		return Subscription{}, err
+	}
+	return *target, nil
+}
+
+// updateCachedNodes is RefreshSubscription's persistence step, reused by
+// Connect (which already has a freshly fetched subscription in hand).
+func (a *App) updateCachedNodes(id string, fetched subscription.Subscription) error {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return err
+	}
+	for i := range settings.Subscriptions {
+		if settings.Subscriptions[i].ID == id {
+			settings.Subscriptions[i].Nodes = cacheNodes(fetched.Nodes)
+			return saveSettings(a.settingsPath, settings)
+		}
+	}
+	return nil
+}
+
+// DeleteSubscription removes a saved subscription. If it was the active
+// one, no subscription is active afterward until the user picks another.
+func (a *App) DeleteSubscription(id string) error {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return err
+	}
+
+	kept := settings.Subscriptions[:0]
+	for _, sub := range settings.Subscriptions {
+		if sub.ID != id {
+			kept = append(kept, sub)
+		}
+	}
+	settings.Subscriptions = kept
+
+	if settings.ActiveSubscriptionID == id {
+		settings.ActiveSubscriptionID = ""
 	}
 
 	return saveSettings(a.settingsPath, settings)
 }
 
-// SetActiveProfile switches which saved profile Connect uses.
-func (a *App) SetActiveProfile(id string) error {
+// SetActiveSubscription switches which saved subscription Connect uses.
+func (a *App) SetActiveSubscription(id string) error {
 	settings, err := a.GetAppSettings()
 	if err != nil {
 		return err
 	}
-	settings.ActiveProfileID = id
+	settings.ActiveSubscriptionID = id
 	return saveSettings(a.settingsPath, settings)
+}
+
+// SetActiveNode switches which of a subscription's nodes Connect uses.
+func (a *App) SetActiveNode(subscriptionID, nodeID string) error {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return err
+	}
+	for i := range settings.Subscriptions {
+		if settings.Subscriptions[i].ID == subscriptionID {
+			settings.Subscriptions[i].ActiveNodeID = nodeID
+			return saveSettings(a.settingsPath, settings)
+		}
+	}
+	return fmt.Errorf("подписка не найдена")
 }
 
 // Show brings the main window to the foreground.

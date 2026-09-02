@@ -6,34 +6,71 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/rookery/client/internal/subscription"
 )
 
-// Profile is one saved connection: everything a rookery:// link carries,
-// plus a stable local ID so the UI can reference it across renames.
-type Profile struct {
-	ID       string `json:"id" yaml:"id"`
-	Name     string `json:"name" yaml:"name"`
-	NodeAddr string `json:"nodeAddr" yaml:"node_addr"`
-	UserID   string `json:"userId" yaml:"user_id"`
-	Secret   string `json:"secret" yaml:"secret"`
+// CachedNode is a node from a subscription's last-known node list, cached
+// locally so the UI has something to show before the next refresh.
+type CachedNode struct {
+	ID      string `json:"id" yaml:"id"`
+	Name    string `json:"name" yaml:"name"`
+	Tags    string `json:"tags" yaml:"tags"`
+	Address string `json:"address" yaml:"address"`
 }
 
-// AppSettings is everything the GUI persists: the profile list plus
-// general, profile-independent settings.
+// Subscription is one saved rookery://sub/... link: where to fetch its node
+// list from, and which of those nodes is currently selected to connect
+// through. Session tokens are never persisted — Connect fetches a fresh one
+// at the moment it's needed (see App.Connect).
+type Subscription struct {
+	ID           string       `json:"id" yaml:"id"`
+	Name         string       `json:"name" yaml:"name"`
+	PanelAddr    string       `json:"panelAddr" yaml:"panel_addr"`
+	Token        string       `json:"token" yaml:"token"`
+	ActiveNodeID string       `json:"activeNodeId" yaml:"active_node_id"`
+	Nodes        []CachedNode `json:"nodes" yaml:"nodes"`
+}
+
+// ActiveNode returns the subscription's currently selected node, falling
+// back to the first cached node if ActiveNodeID isn't set or no longer
+// matches one.
+func (s Subscription) ActiveNode() (CachedNode, bool) {
+	for _, n := range s.Nodes {
+		if n.ID == s.ActiveNodeID {
+			return n, true
+		}
+	}
+	if len(s.Nodes) > 0 {
+		return s.Nodes[0], true
+	}
+	return CachedNode{}, false
+}
+
+func cacheNodes(nodes []subscription.Node) []CachedNode {
+	out := make([]CachedNode, 0, len(nodes))
+	for _, n := range nodes {
+		out = append(out, CachedNode{ID: n.ID, Name: n.Name, Tags: n.Tags, Address: n.Address})
+	}
+	return out
+}
+
+// AppSettings is everything the GUI persists: the subscription list plus
+// general, subscription-independent settings.
 type AppSettings struct {
-	Profiles        []Profile `json:"profiles" yaml:"profiles"`
-	ActiveProfileID string    `json:"activeProfileId" yaml:"active_profile_id"`
-	SOCKSPort       int       `json:"socksPort" yaml:"socks_port"`
-	AutoStart       bool      `json:"autoStart" yaml:"auto_start"`
-	StartMinimized  bool      `json:"startMinimized" yaml:"start_minimized"`
-	SystemWide      bool      `json:"systemWide" yaml:"system_wide"`
+	Subscriptions        []Subscription `json:"subscriptions" yaml:"subscriptions"`
+	ActiveSubscriptionID string         `json:"activeSubscriptionId" yaml:"active_subscription_id"`
+	SOCKSPort            int            `json:"socksPort" yaml:"socks_port"`
+	AutoStart            bool           `json:"autoStart" yaml:"auto_start"`
+	StartMinimized       bool           `json:"startMinimized" yaml:"start_minimized"`
+	SystemWide           bool           `json:"systemWide" yaml:"system_wide"`
 }
 
 // defaultSOCKSPort is used whenever no SOCKS port has been configured yet.
 const defaultSOCKSPort = 1080
 
 func defaultAppSettings() AppSettings {
-	return AppSettings{Profiles: []Profile{}, SOCKSPort: defaultSOCKSPort, SystemWide: true}
+	return AppSettings{Subscriptions: []Subscription{}, SOCKSPort: defaultSOCKSPort, SystemWide: true}
 }
 
 // loadSettings reads settings from path. A missing file is not an error —
@@ -51,11 +88,16 @@ func loadSettings(path string) (AppSettings, error) {
 	if err := yaml.Unmarshal(data, &s); err != nil {
 		return AppSettings{}, fmt.Errorf("parse settings: %w", err)
 	}
-	// A YAML file with an empty/absent "profiles:" key unmarshals to a nil
-	// slice, which encodes as JSON null — the frontend always expects an
-	// array it can call .length/.find on.
-	if s.Profiles == nil {
-		s.Profiles = []Profile{}
+	// A YAML file with an empty/absent key unmarshals to a nil slice, which
+	// encodes as JSON null — the frontend always expects an array it can
+	// call .length/.find on.
+	if s.Subscriptions == nil {
+		s.Subscriptions = []Subscription{}
+	}
+	for i := range s.Subscriptions {
+		if s.Subscriptions[i].Nodes == nil {
+			s.Subscriptions[i].Nodes = []CachedNode{}
+		}
 	}
 	return s, nil
 }
@@ -74,12 +116,12 @@ func saveSettings(path string, s AppSettings) error {
 	return nil
 }
 
-// ActiveProfile returns the currently selected profile, if any.
-func (s AppSettings) ActiveProfile() (Profile, bool) {
-	for _, p := range s.Profiles {
-		if p.ID == s.ActiveProfileID {
-			return p, true
+// ActiveSubscription returns the currently selected subscription, if any.
+func (s AppSettings) ActiveSubscription() (Subscription, bool) {
+	for _, sub := range s.Subscriptions {
+		if sub.ID == s.ActiveSubscriptionID {
+			return sub, true
 		}
 	}
-	return Profile{}, false
+	return Subscription{}, false
 }

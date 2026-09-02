@@ -14,6 +14,7 @@ import (
 
 	"github.com/rookery/client/internal/config"
 	"github.com/rookery/client/internal/engine"
+	"github.com/rookery/client/internal/subscription"
 )
 
 func main() {
@@ -38,12 +39,30 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	sub, err := subscription.Fetch(ctx, cfg.PanelAddr, cfg.Token)
+	if err != nil {
+		return fmt.Errorf("rookery-cli: resolve subscription: %w", err)
+	}
+	node, err := pickNode(sub, cfg.NodeID)
+	if err != nil {
+		return fmt.Errorf("rookery-cli: %w", err)
+	}
+
 	eng := engine.New()
 	engCfg := engine.Config{
-		NodeAddr:                    cfg.NodeAddr,
-		SOCKSAddr:                   cfg.SOCKSAddr,
-		UserID:                      cfg.UserID,
-		Secret:                      cfg.Secret,
+		NodeAddr:  node.Address,
+		SOCKSAddr: cfg.SOCKSAddr,
+		TokenFunc: func(ctx context.Context) (string, error) {
+			sub, err := subscription.Fetch(ctx, cfg.PanelAddr, cfg.Token)
+			if err != nil {
+				return "", err
+			}
+			n, ok := sub.FindNode(node.ID)
+			if !ok {
+				return "", fmt.Errorf("node %q is no longer in this subscription", node.ID)
+			}
+			return n.SessionToken, nil
+		},
 		BufferedAmountLowThreshold:  uint64(cfg.BufferedAmountLowKB) * 1024,
 		BufferedAmountHighWaterMark: uint64(cfg.BufferedAmountHighKB) * 1024,
 		ReconnectMaxBackoff:         time.Duration(cfg.ReconnectMaxBackoffS) * time.Second,
@@ -53,7 +72,7 @@ func run() error {
 	if err := eng.Start(ctx, engCfg); err != nil {
 		return fmt.Errorf("rookery-cli: %w", err)
 	}
-	slog.Info("rookery-cli started", "node_addr", cfg.NodeAddr, "socks_addr", cfg.SOCKSAddr)
+	slog.Info("rookery-cli started", "subscription", sub.Name, "node", node.Name, "node_addr", node.Address, "socks_addr", cfg.SOCKSAddr)
 
 	go logEvents(ctx, eng)
 
@@ -87,6 +106,21 @@ func logEvents(ctx context.Context, eng *engine.Engine) {
 			return
 		}
 	}
+}
+
+// pickNode selects nodeID from sub, or its first node if nodeID is empty.
+func pickNode(sub subscription.Subscription, nodeID string) (subscription.Node, error) {
+	if len(sub.Nodes) == 0 {
+		return subscription.Node{}, fmt.Errorf("subscription %q has no nodes", sub.Name)
+	}
+	if nodeID == "" {
+		return sub.Nodes[0], nil
+	}
+	n, ok := sub.FindNode(nodeID)
+	if !ok {
+		return subscription.Node{}, fmt.Errorf("node %q not found in subscription %q", nodeID, sub.Name)
+	}
+	return n, nil
 }
 
 func parseLogLevel(level string) slog.Level {

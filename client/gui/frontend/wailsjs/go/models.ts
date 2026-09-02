@@ -29,29 +29,67 @@ export namespace engine {
 
 export namespace main {
 	
-	export class Profile {
+	export class CachedNode {
 	    id: string;
 	    name: string;
-	    nodeAddr: string;
-	    userId: string;
-	    secret: string;
+	    tags: string;
+	    address: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new Profile(source);
+	        return new CachedNode(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
-	        this.nodeAddr = source["nodeAddr"];
-	        this.userId = source["userId"];
-	        this.secret = source["secret"];
+	        this.tags = source["tags"];
+	        this.address = source["address"];
 	    }
 	}
+	export class Subscription {
+	    id: string;
+	    name: string;
+	    panelAddr: string;
+	    token: string;
+	    activeNodeId: string;
+	    nodes: CachedNode[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Subscription(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.panelAddr = source["panelAddr"];
+	        this.token = source["token"];
+	        this.activeNodeId = source["activeNodeId"];
+	        this.nodes = this.convertValues(source["nodes"], CachedNode);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class AppSettings {
-	    profiles: Profile[];
-	    activeProfileId: string;
+	    subscriptions: Subscription[];
+	    activeSubscriptionId: string;
 	    socksPort: number;
 	    autoStart: boolean;
 	    startMinimized: boolean;
@@ -63,8 +101,8 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.profiles = this.convertValues(source["profiles"], Profile);
-	        this.activeProfileId = source["activeProfileId"];
+	        this.subscriptions = this.convertValues(source["subscriptions"], Subscription);
+	        this.activeSubscriptionId = source["activeSubscriptionId"];
 	        this.socksPort = source["socksPort"];
 	        this.autoStart = source["autoStart"];
 	        this.startMinimized = source["startMinimized"];
@@ -89,6 +127,7 @@ export namespace main {
 		    return a;
 		}
 	}
+	
 
 }
 

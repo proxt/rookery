@@ -150,17 +150,15 @@ func (e *Engine) connectOnce(ctx context.Context, cfg Config) error {
 	return fmt.Errorf("connection lost")
 }
 
-// exchangeSDP POSTs offerSDP to the node's signaling endpoint and returns its
-// answer SDP.
-//
-// TODO(phase 2): the node now authenticates SessionRequest.Token — a
-// panel-issued, node-scoped token fetched from the panel's /sub/{token}
-// endpoint — instead of a per-user secret the client holds directly. cfg.
-// Secret is passed through as a placeholder so this still compiles; it will
-// not authenticate against a panel-backed node until the client is reworked
-// around subscriptions (see the plan's Phase 2).
+// exchangeSDP fetches a fresh session token via cfg.TokenFunc, POSTs
+// offerSDP to the node's signaling endpoint, and returns its answer SDP.
 func (e *Engine) exchangeSDP(ctx context.Context, cfg Config, offerSDP string) (string, error) {
-	reqBody, err := json.Marshal(signaling.SessionRequest{SDP: offerSDP, Token: cfg.Secret})
+	token, err := cfg.TokenFunc(ctx)
+	if err != nil {
+		return "", fmt.Errorf("get session token: %w", err)
+	}
+
+	reqBody, err := json.Marshal(signaling.SessionRequest{SDP: offerSDP, Token: token})
 	if err != nil {
 		return "", fmt.Errorf("marshal offer: %w", err)
 	}

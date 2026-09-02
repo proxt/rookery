@@ -3,7 +3,7 @@
 
   const tabs = [
     { id: 'dashboard', label: 'Главная', icon: 'home' },
-    { id: 'profiles', label: 'Профили', icon: 'profiles' },
+    { id: 'subscriptions', label: 'Подписки', icon: 'profiles' },
     { id: 'settings', label: 'Настройки', icon: 'settings' },
     { id: 'about', label: 'О программе', icon: 'about' },
   ]

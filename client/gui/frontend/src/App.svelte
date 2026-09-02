@@ -5,7 +5,7 @@
   import { State, EventType } from './lib/constants.js'
   import BottomNav from './lib/BottomNav.svelte'
   import Dashboard from './lib/views/Dashboard.svelte'
-  import Profiles from './lib/views/Profiles.svelte'
+  import Subscriptions from './lib/views/Subscriptions.svelte'
   import Settings from './lib/views/Settings.svelte'
   import About from './lib/views/About.svelte'
 
@@ -27,15 +27,18 @@
   let currentUp = $state(0)
   let currentDown = $state(0)
 
-  let settings = $state({ profiles: [], activeProfileId: '', socksPort: 1080 })
+  let settings = $state({ subscriptions: [], activeSubscriptionId: '', socksPort: 1080 })
 
-  const activeProfileName = $derived(
-    settings.profiles.find((p) => p.id === settings.activeProfileId)?.name ?? ''
-  )
+  const activeLabel = $derived.by(() => {
+    const sub = settings.subscriptions.find((s) => s.id === settings.activeSubscriptionId)
+    if (!sub) return ''
+    const node = sub.nodes?.find((n) => n.id === sub.activeNodeId) ?? sub.nodes?.[0]
+    return node ? `${sub.name} · ${node.name}` : sub.name
+  })
 
   async function reloadSettings() {
     const s = await GetAppSettings()
-    settings = { ...s, profiles: s.profiles ?? [] }
+    settings = { ...s, subscriptions: (s.subscriptions ?? []).map((sub) => ({ ...sub, nodes: sub.nodes ?? [] })) }
   }
 
   onMount(() => {
@@ -74,9 +77,9 @@
 
 <div class="flex h-screen flex-col">
   {#if activeTab === 'dashboard'}
-    <Dashboard {status} {history} {currentUp} {currentDown} {activeProfileName} ontoggle={toggle} />
-  {:else if activeTab === 'profiles'}
-    <Profiles {settings} onchange={reloadSettings} />
+    <Dashboard {status} {history} {currentUp} {currentDown} {activeLabel} ontoggle={toggle} />
+  {:else if activeTab === 'subscriptions'}
+    <Subscriptions {settings} onchange={reloadSettings} />
   {:else if activeTab === 'settings'}
     <Settings {settings} onchange={reloadSettings} />
   {:else}

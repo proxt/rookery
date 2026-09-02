@@ -1,22 +1,24 @@
 # Copy to client.yaml and fill in real values. client.yaml is gitignored.
 #
-# The GUI doesn't need this file edited by hand: paste a rookery:// link
-# (from the node's admin panel) into Settings and it fills in node_addr,
-# user_id, and secret for you. This file matters for the headless CLI, or if
-# you'd rather configure by hand.
+# The GUI doesn't need this file edited by hand: paste a rookery://sub/...
+# link (from the panel — Users → your user → "Скопировать ссылку") into
+# the Subscriptions tab and it does the rest. This file matters for the
+# headless CLI, or if you'd rather configure by hand.
 
-# Node's public signaling address, e.g. https://vpn.example.com
-node_addr: "https://your-node-hostname.example.com"
+# Panel's public address, e.g. https://panel.example.com
+panel_addr: "https://your-panel-hostname.example.com"
+
+# Subscription token — decode it out of a rookery://sub/... link (it's the
+# "t" field in the base64url JSON payload), or read it off the panel.
+token: ""
+token_env: ""
 
 # Local SOCKS5 listener address.
 socks_addr: "127.0.0.1:1080"
 
-# User ID and secret from the node's admin panel (Users → your user →
-# "Скопировать ссылку" — decode the rookery:// link, or read them off the
-# admin panel directly).
-user_id: ""
-secret: ""
-secret_env: ""
+# Which of the subscription's nodes to use. Empty means "the first one the
+# panel returns" — fine if the subscription only has one node.
+node_id: ""
 
 # DataChannel backpressure thresholds, in KB of bufferedAmount.
 buffered_amount_low_kb: 256

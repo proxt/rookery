@@ -10,12 +10,14 @@ import (
 
 // Config is the client's runtime configuration.
 type Config struct {
-	ProfileName          string `yaml:"profile_name"`
-	NodeAddr             string `yaml:"node_addr"`
+	SubscriptionName string `yaml:"subscription_name"`
+	PanelAddr        string `yaml:"panel_addr"`
+	Token            string `yaml:"token"`
+	TokenEnv         string `yaml:"token_env"`
+	// NodeID picks a specific node from the subscription's list. Empty
+	// means "the first node the panel returns".
+	NodeID               string `yaml:"node_id"`
 	SOCKSAddr            string `yaml:"socks_addr"`
-	UserID               string `yaml:"user_id"`
-	Secret               string `yaml:"secret"`
-	SecretEnv            string `yaml:"secret_env"`
 	BufferedAmountLowKB  int    `yaml:"buffered_amount_low_kb"`
 	BufferedAmountHighKB int    `yaml:"buffered_amount_high_kb"`
 	ReconnectMaxBackoffS int    `yaml:"reconnect_max_backoff_seconds"`
@@ -37,12 +39,12 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("config: parse %s: %w", path, err)
 	}
 
-	if cfg.SecretEnv != "" {
-		val, ok := os.LookupEnv(cfg.SecretEnv)
+	if cfg.TokenEnv != "" {
+		val, ok := os.LookupEnv(cfg.TokenEnv)
 		if !ok {
-			return nil, fmt.Errorf("config: secret_env %q not set", cfg.SecretEnv)
+			return nil, fmt.Errorf("config: token_env %q not set", cfg.TokenEnv)
 		}
-		cfg.Secret = val
+		cfg.Token = val
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -53,17 +55,14 @@ func Load(path string) (*Config, error) {
 
 // Validate checks that all required fields are present and sane.
 func (c *Config) Validate() error {
-	if c.NodeAddr == "" {
-		return fmt.Errorf("config: node_addr is required")
+	if c.PanelAddr == "" {
+		return fmt.Errorf("config: panel_addr is required")
+	}
+	if c.Token == "" {
+		return fmt.Errorf("config: token is required")
 	}
 	if c.SOCKSAddr == "" {
 		return fmt.Errorf("config: socks_addr is required")
-	}
-	if c.UserID == "" {
-		return fmt.Errorf("config: user_id is required")
-	}
-	if c.Secret == "" {
-		return fmt.Errorf("config: secret is required")
 	}
 	if c.BufferedAmountLowKB <= 0 {
 		return fmt.Errorf("config: buffered_amount_low_kb must be positive, got %d", c.BufferedAmountLowKB)
