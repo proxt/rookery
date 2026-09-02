@@ -20,6 +20,11 @@ services:
     restart: always
     ports:
       - "127.0.0.1:8090:8090"
+    labels:
+      # Required for the scoped watchtower below to find this container at
+      # all — WATCHTOWER_SCOPE filters targets by this label, not just by
+      # name; without it watchtower silently scans zero containers.
+      - "com.centurylinklabs.watchtower.scope=rookery-panel"
     volumes:
       - rookery_panel_data:/data
       # Optional: drop a panel.yaml here to override defaults.
