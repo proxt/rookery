@@ -60,6 +60,14 @@
         GetStatus().then((s) => (status = s))
       }
     })
+
+    // Fired when a rookery://... link launches (or is forwarded to) this
+    // process — e.g. clicking "Установить в приложение" on a subscription
+    // page — after it's been added as a new subscription.
+    EventsOn('subscription:added', () => {
+      activeTab = 'subscriptions'
+      reloadSettings()
+    })
   })
 
   async function toggle() {

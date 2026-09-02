@@ -36,6 +36,31 @@ func TestEncodeUsesSubPrefix(t *testing.T) {
 	}
 }
 
+func TestDecodeAcceptsPlainSubURL(t *testing.T) {
+	cases := []struct {
+		name string
+		link string
+		want Link
+	}{
+		{"basic", "https://panel.example.com/sub/abc123", Link{PanelAddr: "https://panel.example.com", Token: "abc123"}},
+		{"trailing-slash", "https://panel.example.com/sub/abc123/", Link{PanelAddr: "https://panel.example.com", Token: "abc123"}},
+		{"http-scheme", "http://panel.example.com/sub/abc123", Link{PanelAddr: "http://panel.example.com", Token: "abc123"}},
+		{"with-port", "https://panel.example.com:8090/sub/abc123", Link{PanelAddr: "https://panel.example.com:8090", Token: "abc123"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Decode(tc.link)
+			if err != nil {
+				t.Fatalf("Decode(%q) error = %v", tc.link, err)
+			}
+			if got != tc.want {
+				t.Fatalf("Decode(%q) = %+v, want %+v", tc.link, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDecodeGarbageInput(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -47,6 +72,8 @@ func TestDecodeGarbageInput(t *testing.T) {
 		{"wrong-scheme", "vmess://eyJhIjoxfQ", ErrInvalidScheme},
 		{"no-scheme", "eyJhIjoxfQ", ErrInvalidScheme},
 		{"old-scheme-no-sub", "rookery://eyJhIjoxfQ", ErrInvalidScheme},
+		{"url-without-sub-path", "https://panel.example.com/admin", ErrInvalidScheme},
+		{"url-with-empty-token", "https://panel.example.com/sub/", ErrInvalidScheme},
 		{"not-base64", "rookery://sub/not-valid-base64!!!", nil},
 		{"base64-but-not-json", "rookery://sub/" + "bm90LWpzb24", nil},
 		{"missing-fields", "rookery://sub/" + encodeRaw(`{"p":"https://x.com"}`), nil},

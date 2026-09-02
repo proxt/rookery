@@ -26,6 +26,10 @@ export function GetStatus() {
   return window['go']['main']['App']['GetStatus']();
 }
 
+export function HandleExternalLink(arg1) {
+  return window['go']['main']['App']['HandleExternalLink'](arg1);
+}
+
 export function OpenURL(arg1) {
   return window['go']['main']['App']['OpenURL'](arg1);
 }

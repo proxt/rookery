@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"os"
+	"strings"
 
 	"fyne.io/systray"
 
@@ -17,13 +18,24 @@ import (
 var assets embed.FS
 
 func main() {
+	// Windows passes a clicked rookery://... link as argv[1] (registered in
+	// the installer's project.nsi as this exe's URL protocol handler).
+	var link string
+	if len(os.Args) > 1 && strings.Contains(os.Args[1], "://") {
+		link = os.Args[1]
+	}
+
 	if !acquireSingleInstanceLock() {
-		// Another instance is already running; just exit rather than
-		// opening a second window/tray icon on top of it.
+		// Another instance is already running — hand off the link (if any)
+		// to it instead of opening a second window/tray icon on top of it.
+		if link != "" {
+			forwardLinkToRunningInstance(link)
+		}
 		os.Exit(0)
 	}
 
 	app := NewApp()
+	app.pendingLink = link
 
 	go systray.Run(func() { setupTray(app) }, func() {})
 

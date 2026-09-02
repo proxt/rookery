@@ -15,6 +15,8 @@ export function GetAppSettings():Promise<main.AppSettings>;
 
 export function GetStatus():Promise<engine.StatusSnapshot>;
 
+export function HandleExternalLink(arg1:string):Promise<void>;
+
 export function OpenURL(arg1:string):Promise<void>;
 
 export function Quit():Promise<void>;

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -31,6 +32,11 @@ type App struct {
 	settingsPath string
 	quitting     bool
 	setTrayState func(engine.State)
+
+	// pendingLink is a rookery:// link this process was launched with
+	// (os.Args[1]), stashed here because ctx isn't ready yet in main —
+	// startup() picks it up once it is.
+	pendingLink string
 }
 
 // NewApp creates an idle App. Call startup (invoked by Wails) before using it.
@@ -54,6 +60,13 @@ func (a *App) startup(ctx context.Context) {
 	if err == nil && settings.StartMinimized {
 		runtime.WindowHide(a.ctx)
 	}
+
+	if a.pendingLink != "" {
+		link := a.pendingLink
+		a.pendingLink = ""
+		go a.HandleExternalLink(link)
+	}
+	go startLinkListener(a)
 }
 
 // forwardEvents relays engine.Events() to the frontend as "tunnel:event",
@@ -178,15 +191,34 @@ func (a *App) AddSubscriptionFromLink(link string) (Subscription, error) {
 		return Subscription{}, err
 	}
 
+	name := fetched.Name
+	if name == "" {
+		name = "Без названия"
+	}
+
+	// The same link (e.g. re-clicking a panel's "Установить в приложение"
+	// button, or forwarded via IPC from a second launch) refreshes the
+	// existing subscription in place instead of piling up duplicates.
+	for i := range settings.Subscriptions {
+		existing := &settings.Subscriptions[i]
+		if existing.PanelAddr == l.PanelAddr && existing.Token == l.Token {
+			existing.Name = name
+			existing.Nodes = cacheNodes(fetched.Nodes)
+			if _, ok := existing.ActiveNode(); !ok && len(fetched.Nodes) > 0 {
+				existing.ActiveNodeID = fetched.Nodes[0].ID
+			}
+			if err := saveSettings(a.settingsPath, settings); err != nil {
+				return Subscription{}, err
+			}
+			return *existing, nil
+		}
+	}
+
 	id, err := randomID()
 	if err != nil {
 		return Subscription{}, err
 	}
 
-	name := fetched.Name
-	if name == "" {
-		name = "Без названия"
-	}
 	sub := Subscription{ID: id, Name: name, PanelAddr: l.PanelAddr, Token: l.Token, Nodes: cacheNodes(fetched.Nodes)}
 	if len(fetched.Nodes) > 0 {
 		sub.ActiveNodeID = fetched.Nodes[0].ID
@@ -299,6 +331,19 @@ func (a *App) SetActiveNode(subscriptionID, nodeID string) error {
 		}
 	}
 	return fmt.Errorf("подписка не найдена")
+}
+
+// HandleExternalLink adds link as a new subscription and brings the window
+// to the foreground — called for a rookery:// link this process was
+// launched with, or one forwarded from a second launch via the IPC
+// listener (see ipc.go). Errors are logged rather than surfaced, since
+// there's no synchronous caller waiting on a Wails-bound method here.
+func (a *App) HandleExternalLink(link string) {
+	if _, err := a.AddSubscriptionFromLink(link); err != nil {
+		slog.Warn("app: add subscription from external link", "error", err)
+	}
+	runtime.EventsEmit(a.ctx, "subscription:added")
+	runtime.WindowShow(a.ctx)
 }
 
 // Show brings the main window to the foreground.

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -42,16 +43,26 @@ func Encode(l Link) string {
 	return subPrefix + base64.RawURLEncoding.EncodeToString(data)
 }
 
-// Decode parses a rookery://sub/... link.
+// Decode parses either a rookery://sub/... deep link, or the plain
+// https://panel/sub/{token} URL it's derived from — the sub page's browser
+// address bar and its "copy link" button both hand out the latter, so a
+// client has to accept whatever a user actually copies.
 func Decode(link string) (Link, error) {
 	link = strings.TrimSpace(link)
 	if link == "" {
 		return Link{}, ErrEmptyLink
 	}
 
-	if !strings.HasPrefix(link, subPrefix) {
-		return Link{}, ErrInvalidScheme
+	if strings.HasPrefix(link, subPrefix) {
+		return decodeSubLink(link)
 	}
+	if l, err := decodeSubURL(link); err == nil {
+		return l, nil
+	}
+	return Link{}, ErrInvalidScheme
+}
+
+func decodeSubLink(link string) (Link, error) {
 	rest := strings.TrimPrefix(link, subPrefix)
 
 	data, err := base64.RawURLEncoding.DecodeString(rest)
@@ -69,4 +80,26 @@ func Decode(link string) (Link, error) {
 	}
 
 	return Link{PanelAddr: p.PanelAddr, Token: p.Token}, nil
+}
+
+// decodeSubURL parses "https://panel.example.com/sub/{token}" (with an
+// optional trailing slash) into a Link.
+func decodeSubURL(link string) (Link, error) {
+	u, err := url.Parse(link)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return Link{}, ErrInvalidScheme
+	}
+
+	const marker = "/sub/"
+	i := strings.LastIndex(u.Path, marker)
+	if i < 0 {
+		return Link{}, ErrInvalidScheme
+	}
+	token := strings.Trim(u.Path[i+len(marker):], "/")
+	if token == "" {
+		return Link{}, ErrInvalidScheme
+	}
+
+	panelAddr := u.Scheme + "://" + u.Host + u.Path[:i]
+	return Link{PanelAddr: panelAddr, Token: token}, nil
 }

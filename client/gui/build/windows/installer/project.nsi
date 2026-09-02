@@ -106,6 +106,15 @@ Section
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols
 
+    # wails.associateCustomProtocols is an empty stub in this Wails version
+    # (no wails.json field feeds it), so register the rookery:// URL
+    # protocol by hand instead — this is what makes the panel's "Установить
+    # в приложение" button (a rookery://sub/... link) launch this app.
+    WriteRegStr HKCR "rookery" "" "URL:Rookery Protocol"
+    WriteRegStr HKCR "rookery" "URL Protocol" ""
+    WriteRegStr HKCR "rookery\DefaultIcon" "" "$INSTDIR\${PRODUCT_EXECUTABLE},0"
+    WriteRegStr HKCR "rookery\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%1"'
+
     !insertmacro wails.writeUninstaller
 SectionEnd
 
@@ -121,6 +130,7 @@ Section "uninstall"
 
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols
+    DeleteRegKey HKCR "rookery"
 
     !insertmacro wails.deleteUninstaller
 SectionEnd
