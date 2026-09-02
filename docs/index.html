@@ -1,0 +1,1336 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Rookery — документация</title>
+<meta name="description" content="Полная документация Rookery: установка панели и нод, API панели, конфигурация клиента, устранение неполадок.">
+<meta property="og:title" content="Rookery — документация">
+<meta property="og:description" content="Установка панели и нод, справочник API, конфигурация клиента, устранение неполадок.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --surface-2: #f1f3f8;
+    --border: #e1e4ec;
+    --text: #171a24;
+    --muted: #5b6272;
+    --accent: #3b63e0;
+    --accent-2: #7c5cff;
+    --ok: #16a34a;
+    --warn: #b45309;
+    --danger: #dc2626;
+    --code-bg: #12151d;
+    --code-text: #e7e9f0;
+    --code-muted: #7d859c;
+    --shadow: 0 1px 2px rgba(20, 24, 40, .04), 0 8px 24px rgba(20, 24, 40, .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0c11;
+      --surface: #12151d;
+      --surface-2: #1a1e29;
+      --border: #262b38;
+      --text: #e7e9f0;
+      --muted: #8b93a8;
+      --accent: #5b82ff;
+      --accent-2: #9b7bff;
+      --ok: #34d399;
+      --warn: #f0b429;
+      --danger: #f87171;
+      --code-bg: #0c0e14;
+      --code-text: #dfe3ee;
+      --code-muted: #6e7690;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0c11;
+    --surface: #12151d;
+    --surface-2: #1a1e29;
+    --border: #262b38;
+    --text: #e7e9f0;
+    --muted: #8b93a8;
+    --accent: #5b82ff;
+    --accent-2: #9b7bff;
+    --ok: #34d399;
+    --warn: #f0b429;
+    --danger: #f87171;
+    --code-bg: #0c0e14;
+    --code-text: #dfe3ee;
+    --code-muted: #6e7690;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    font-size: 15.5px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Manrope", "IBM Plex Sans", sans-serif;
+    font-weight: 800;
+    line-height: 1.25;
+    text-wrap: balance;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  code, pre, kbd, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  a { color: var(--accent); }
+
+  /* ---------- shell ---------- */
+  .shell { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 272px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 22px 16px 40px;
+    z-index: 20;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px 18px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    display: block; box-shadow: var(--shadow);
+  }
+  .brand-name { font-family: "Manrope", sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 0.02em; }
+  .brand-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .nav-group { margin-bottom: 4px; }
+  .nav-group-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); padding: 14px 8px 6px;
+  }
+  .nav-link {
+    display: block; padding: 6px 8px 6px 14px; border-radius: 7px;
+    font-size: 13.5px; color: var(--muted); text-decoration: none;
+    border-left: 2px solid transparent; margin-left: 2px;
+    transition: color .12s, background .12s, border-color .12s;
+  }
+  .nav-link:hover { color: var(--text); background: var(--surface-2); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; background: var(--surface-2); }
+
+  main {
+    flex: 1;
+    min-width: 0;
+    padding: 56px clamp(20px, 5vw, 72px) 120px;
+  }
+  .content { max-width: 760px; margin: 0 auto; }
+
+  .doc-header { margin-bottom: 48px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  .eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .doc-header h1 { font-size: clamp(30px, 4vw, 40px); margin: 0 0 14px; }
+  .doc-header p { font-size: 17px; color: var(--muted); max-width: 60ch; margin: 0; }
+
+  section { margin-bottom: 56px; scroll-margin-top: 24px; }
+  section h2 {
+    font-size: 24px; margin: 0 0 6px; padding-top: 4px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  section h2 .num { color: var(--accent); font-family: "IBM Plex Mono", monospace; font-size: 15px; font-weight: 600; }
+  .section-desc { color: var(--muted); margin: 0 0 26px; max-width: 62ch; }
+
+  h3 { font-size: 17px; margin: 34px 0 10px; scroll-margin-top: 24px; }
+  h3:first-child { margin-top: 0; }
+  h4 { font-size: 14px; margin: 22px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  p { margin: 0 0 14px; max-width: 68ch; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; max-width: 66ch; }
+  li { margin-bottom: 5px; }
+  strong { font-weight: 650; }
+
+  .anchor-link {
+    opacity: 0; text-decoration: none; color: var(--muted); margin-left: 6px; font-size: 14px;
+    transition: opacity .12s;
+  }
+  h2:hover .anchor-link, h3:hover .anchor-link { opacity: 1; }
+
+  /* ---------- code ---------- */
+  .code-block {
+    background: var(--code-bg); color: var(--code-text);
+    border-radius: 10px; border: 1px solid var(--border);
+    margin: 0 0 16px; overflow: hidden; box-shadow: var(--shadow);
+  }
+  .code-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; font-size: 11.5px; color: var(--code-muted);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    font-family: "IBM Plex Mono", monospace; letter-spacing: .02em;
+  }
+  .code-block pre {
+    margin: 0; padding: 14px 16px; overflow-x: auto;
+    font-size: 13px; line-height: 1.6;
+  }
+  .code-block code { font-family: "IBM Plex Mono", monospace; white-space: pre; }
+  .copy-btn {
+    background: none; border: none; color: var(--code-muted); cursor: pointer;
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; padding: 2px 6px; border-radius: 5px;
+    transition: color .12s, background .12s;
+  }
+  .copy-btn:hover { color: var(--code-text); background: rgba(255,255,255,.08); }
+  .copy-btn:focus-visible, .nav-link:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copy-btn.copied { color: var(--ok); }
+
+  code.inline {
+    background: var(--surface-2); border: 1px solid var(--border);
+    padding: 1.5px 6px; border-radius: 5px; font-size: .87em; color: var(--text);
+  }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin: 0 0 20px; border: 1px solid var(--border); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 480px; }
+  th, td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  td code.inline { white-space: nowrap; }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    background: var(--surface); border-radius: 0 10px 10px 0;
+    padding: 13px 16px; margin: 0 0 18px; font-size: 14px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout-title { font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; display: block; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.warn .callout-title { color: var(--warn); }
+  .callout.tip { border-left-color: var(--ok); }
+  .callout.tip .callout-title { color: var(--ok); }
+  .callout.note .callout-title { color: var(--accent); }
+
+  /* ---------- misc components ---------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; letter-spacing: .02em;
+  }
+  .badge.get { background: rgba(59,99,224,.12); color: var(--accent); }
+  .badge.post { background: rgba(22,163,74,.12); color: var(--ok); }
+  .badge.put { background: rgba(240,180,41,.14); color: var(--warn); }
+  .badge.delete { background: rgba(220,38,38,.12); color: var(--danger); }
+  .badge.patch { background: rgba(124,92,255,.14); color: var(--accent-2); }
+
+  .endpoint {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 9px 9px 0 0; border-bottom: none;
+  }
+  .endpoint code { font-size: 13.5px; }
+  .endpoint-body { border: 1px solid var(--border); border-radius: 0 0 9px 9px; padding: 14px; margin-bottom: 20px; }
+  .endpoint-body p:last-child { margin-bottom: 0; }
+  .endpoint-auth { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+  .kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 13.5px; margin-bottom: 18px; }
+  .kv-grid dt { color: var(--muted); }
+  .kv-grid dd { margin: 0; }
+
+  figure { margin: 0 0 20px; }
+  figure svg {
+    display: block; width: 100%; height: auto; max-width: 620px; margin: 0 auto;
+    color: var(--text);
+  }
+  figcaption { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 10px; }
+
+  .step-list { list-style: none; padding: 0; margin: 0 0 18px; counter-reset: step; }
+  .step-list > li {
+    counter-increment: step; position: relative; padding-left: 40px; margin-bottom: 18px;
+  }
+  .step-list > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 26px; height: 26px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 700; color: var(--accent);
+  }
+  .step-list > li > strong { display: block; margin-bottom: 4px; font-size: 14.5px; }
+
+  /* ---------- interface mockups ---------- */
+  /* Not screenshots — hand-built reproductions of the real admin/client UI,
+     rendered in the product's own fixed dark palette (it has no light mode)
+     regardless of this doc page's own theme. */
+  .mockup {
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    background: var(--surface); box-shadow: var(--shadow); margin: 0 0 10px;
+  }
+  .mockup-bar {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+  }
+  .mockup-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .mockup-url {
+    flex: 1; text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mockup-app {
+    --mbg: #0b0d11; --msurface: #171a21; --msurface2: #1c2029; --mborder: #2a2f3a;
+    --mtext: #e5e7eb; --mmuted: #8b93a1; --maccent: #4f7cff; --maccent2: #7c5cff;
+    --mok: #22c55e; --mwarn: #d98e1c; --mdanger: #e0453f;
+    background: var(--mbg); color: var(--mtext);
+    font-family: "IBM Plex Sans", sans-serif; font-size: 12px;
+  }
+  .mockup-shell { display: flex; }
+  .mockup-sidebar {
+    width: 128px; flex-shrink: 0; background: var(--msurface); border-right: 1px solid var(--mborder);
+    padding: 12px 8px;
+  }
+  .mockup-brand {
+    display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 10.5px; letter-spacing: .03em;
+    padding: 2px 4px 12px; border-bottom: 1px solid var(--mborder); margin-bottom: 8px;
+  }
+  .mockup-brand-mark { width: 16px; height: 16px; border-radius: 5px; flex-shrink: 0; display: block; }
+  .mockup-nav { display: flex; flex-direction: column; gap: 2px; }
+  .mockup-nav-item { font-size: 10.5px; color: var(--mmuted); padding: 5px 7px; border-radius: 6px; }
+  .mockup-nav-item.active { background: var(--msurface2); color: var(--mtext); font-weight: 600; }
+  .mockup-main { flex: 1; min-width: 0; padding: 12px 14px; }
+  .mockup-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .mockup-title { font-family: "Manrope", sans-serif; font-weight: 800; font-size: 13px; }
+  .mockup-btn {
+    font-size: 10.5px; font-weight: 600; padding: 4px 9px; border-radius: 7px;
+    background: var(--maccent); color: #fff;
+  }
+  .mockup-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .mockup-table th {
+    text-align: left; padding: 6px 8px; color: var(--mmuted); font-weight: 600; text-transform: uppercase;
+    font-size: 9px; letter-spacing: .03em; border-bottom: 1px solid var(--mborder);
+  }
+  .mockup-table td { padding: 7px 8px; border-bottom: 1px solid var(--mborder); }
+  .mockup-table tr:last-child td { border-bottom: none; }
+  .mockup-pill {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 600;
+    padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  }
+  .mockup-pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .mockup-pill.ok { background: rgba(34,197,94,.14); color: var(--mok); }
+  .mockup-pill.muted { background: rgba(139,147,161,.14); color: var(--mmuted); }
+  .mockup-pill.warn { background: rgba(217,142,14,.16); color: var(--mwarn); }
+  .mockup-pill.danger { background: rgba(224,69,63,.14); color: var(--mdanger); }
+
+  .mockup-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
+  .mockup-card { background: var(--msurface); border: 1px solid var(--mborder); border-radius: 10px; padding: 12px; }
+  .mockup-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .mockup-card-name { font-weight: 700; font-size: 11.5px; }
+  .mockup-card-row { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--mmuted); margin-top: 4px; }
+  .mockup-card-row b { color: var(--mtext); font-weight: 600; }
+
+  .mockup-sub { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 32px 20px; gap: 4px; }
+  .mockup-sub-mark { width: 42px; height: 42px; border-radius: 12px; margin-bottom: 8px; background: linear-gradient(135deg, var(--maccent), var(--maccent2)); }
+  .mockup-sub-name { font-family: "Manrope", sans-serif; font-weight: 800; font-size: 16px; }
+  .mockup-sub-meta { font-size: 11px; color: var(--mmuted); margin-top: 2px; }
+  .mockup-sub-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 230px; margin-top: 14px; }
+  .mockup-sub-btn {
+    font-size: 11.5px; font-weight: 700; padding: 10px; border-radius: 9px; text-align: center;
+    background: linear-gradient(135deg, var(--maccent), var(--maccent2)); color: #fff;
+  }
+  .mockup-sub-btn.secondary { background: var(--msurface2); color: var(--mtext); border: 1px solid var(--mborder); font-weight: 600; }
+
+  .mockup-phone { max-width: 300px; margin: 0 auto; }
+  .mockup-phone .mockup-main { padding: 12px; }
+  .mockup-sub-tab { background: var(--msurface); border: 1px solid var(--mborder); border-radius: 10px; padding: 10px; }
+  .mockup-sub-tab-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 11px; }
+  .mockup-node-row { display: flex; align-items: center; gap: 8px; padding: 7px 2px; font-size: 10.5px; border-top: 1px solid var(--mborder); margin-top: 6px; }
+  .mockup-radio { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--mmuted); flex-shrink: 0; position: relative; }
+  .mockup-radio.checked { border-color: var(--maccent); }
+  .mockup-radio.checked::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; background: var(--maccent); }
+  .mockup-connect-btn { margin-top: 12px; text-align: center; font-size: 11px; font-weight: 700; padding: 9px; border-radius: 9px; background: var(--mok); color: #0b0d11; }
+
+  .mockup-caption { font-size: 12.5px; color: var(--muted); text-align: center; margin: 0 0 24px; }
+
+  @media (max-width: 560px) {
+    .mockup-shell { flex-direction: column; }
+    .mockup-sidebar { width: 100%; display: flex; align-items: center; gap: 10px; border-right: none; border-bottom: 1px solid var(--mborder); }
+    .mockup-nav { flex-direction: row; flex-wrap: wrap; }
+    .mockup-cards { grid-template-columns: 1fr; }
+  }
+
+  .theme-toggle {
+    position: fixed; top: 18px; right: 18px; z-index: 30;
+    display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 9px; padding: 3px; box-shadow: var(--shadow);
+  }
+  .theme-toggle button {
+    border: none; background: none; color: var(--muted); cursor: pointer;
+    padding: 5px 9px; border-radius: 6px; font-size: 12px; font-family: "IBM Plex Mono", monospace;
+  }
+  .theme-toggle button.active { background: var(--surface-2); color: var(--text); }
+
+  .menu-toggle { display: none; }
+
+  hr.div { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  footer.docfoot { max-width: 760px; margin: 60px auto 0; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; }
+
+  @media (max-width: 880px) {
+    .sidebar {
+      position: fixed; left: 0; top: 0; transform: translateX(-100%);
+      transition: transform .2s ease; box-shadow: var(--shadow); width: 82vw; max-width: 300px;
+    }
+    .sidebar.open { transform: translateX(0); }
+    main { padding: 56px 20px 100px; }
+    .menu-toggle {
+      display: flex; position: fixed; bottom: 18px; left: 18px; z-index: 25;
+      width: 46px; height: 46px; border-radius: 50%; align-items: center; justify-content: center;
+      background: var(--accent); color: #fff; border: none; box-shadow: var(--shadow); cursor: pointer;
+    }
+    .scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 19; }
+    .scrim.show { display: block; }
+  }
+</style>
+</head>
+<body>
+<div class="theme-toggle" role="group" aria-label="Тема">
+  <button type="button" data-theme-btn="system" class="active">Авто</button>
+  <button type="button" data-theme-btn="light">Свет</button>
+  <button type="button" data-theme-btn="dark">Тьма</button>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<div class="shell">
+  <nav class="sidebar" id="sidebar" aria-label="Оглавление">
+    <div class="brand">
+      <img class="brand-mark" src="logo.png" alt="Rookery">
+      <div>
+        <div class="brand-name">ROOKERY</div>
+        <div class="brand-sub">Документация</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Начало</div>
+      <a class="nav-link" href="#intro">Введение</a>
+      <a class="nav-link" href="#architecture">Архитектура</a>
+      <a class="nav-link" href="#glossary">Термины</a>
+      <a class="nav-link" href="#quickstart">Быстрый старт</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Панель</div>
+      <a class="nav-link" href="#panel-install">Установка</a>
+      <a class="nav-link" href="#panel-autoupdate">Автообновление</a>
+      <a class="nav-link" href="#panel-nodes">Ноды</a>
+      <a class="nav-link" href="#panel-users">Пользователи</a>
+      <a class="nav-link" href="#panel-stats">Статистика</a>
+      <a class="nav-link" href="#panel-admins">Администраторы</a>
+      <a class="nav-link" href="#panel-releases">Обновления клиента</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">API панели</div>
+      <a class="nav-link" href="#api-auth">Аутентификация</a>
+      <a class="nav-link" href="#api-users">Пользователи</a>
+      <a class="nav-link" href="#api-nodes">Ноды</a>
+      <a class="nav-link" href="#api-stats">Статистика</a>
+      <a class="nav-link" href="#api-releases">Релизы</a>
+      <a class="nav-link" href="#api-public">Публичные эндпоинты</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Нода</div>
+      <a class="nav-link" href="#node-install">Установка (Docker)</a>
+      <a class="nav-link" href="#node-bare">Без Docker</a>
+      <a class="nav-link" href="#node-config">Конфигурация</a>
+      <a class="nav-link" href="#node-ports">Порты</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Caddy и домен</div>
+      <a class="nav-link" href="#caddy">Настройка Caddy</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Клиент</div>
+      <a class="nav-link" href="#client-gui">GUI</a>
+      <a class="nav-link" href="#client-cli">CLI</a>
+      <a class="nav-link" href="#client-link">Формат ссылки</a>
+      <a class="nav-link" href="#client-update">Автообновление</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Протокол</div>
+      <a class="nav-link" href="#protocol-token">Токен сессии</a>
+      <a class="nav-link" href="#protocol-transport">Транспорт</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">Справка</div>
+      <a class="nav-link" href="#troubleshooting">Устранение неполадок</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="content">
+
+      <header class="doc-header" id="intro">
+        <div class="eyebrow">Rookery · документация</div>
+        <h1>Панель, ноды и клиент — от установки до API</h1>
+        <p>
+          Rookery — WebRTC-туннель с центральной панелью, произвольным числом relay-нод
+          и клиентом под Windows. Здесь — как поднять каждую часть, что означает каждая
+          настройка, и справочник по API панели с примерами запросов.
+        </p>
+      </header>
+
+      <section id="architecture">
+        <h2><span class="num">01</span> Архитектура<a class="anchor-link" href="#architecture">#</a></h2>
+        <p class="section-desc">Три независимых компонента. Нода не хранит пользователей и никогда не спрашивает у панели «а этот токен настоящий?» — проверяет сама.</p>
+
+        <figure>
+          <svg viewBox="0 0 640 300" role="img" aria-label="Клиент запрашивает список нод у панели по GET /sub/token и получает подписанный токен сессии; тем же токеном клиент открывает WebRTC-сессию с нодой напрямую; нода проверяет токен локально своим ключом и раз в 30 секунд отправляет панели heartbeat и отчёт по трафику; администратор в браузере обращается к панели по /admin">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="currentColor" />
+              </marker>
+            </defs>
+            <g fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35">
+              <rect x="14" y="30" width="150" height="64" rx="10"/>
+              <rect x="14" y="206" width="150" height="64" rx="10"/>
+              <rect x="245" y="118" width="150" height="64" rx="10"/>
+              <rect x="476" y="30" width="150" height="64" rx="10"/>
+              <rect x="476" y="206" width="150" height="64" rx="10"/>
+            </g>
+            <g font-family="IBM Plex Mono, monospace" font-size="13" text-anchor="middle" fill="currentColor">
+              <text x="89" y="66">Админ</text>
+              <text x="89" y="82" font-size="10.5" opacity="0.55">браузер</text>
+              <text x="89" y="242">Клиент</text>
+              <text x="89" y="258" font-size="10.5" opacity="0.55">Windows GUI/CLI</text>
+              <text x="320" y="154">Панель</text>
+              <text x="320" y="170" font-size="10.5" opacity="0.55">users · nodes · stats</text>
+              <text x="551" y="66">Нода №1</text>
+              <text x="551" y="242">Нода №2</text>
+            </g>
+            <g stroke="currentColor" stroke-width="1.3" fill="none">
+              <path d="M164,62 H245" marker-end="url(#arrow)"/>
+              <path d="M89,206 C89,155 180,150 245,145" marker-end="url(#arrow)"/>
+            </g>
+            <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">
+              <text x="170" y="55">GET /admin/*</text>
+              <text x="105" y="178">GET /sub/{token}</text>
+            </g>
+            <g stroke="currentColor" stroke-width="1.6" fill="none">
+              <path d="M89,206 C89,120 260,55 476,60" marker-end="url(#arrow)"/>
+            </g>
+            <text x="270" y="90" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">POST /session (token)</text>
+            <g stroke="currentColor" stroke-width="1.3" fill="none" opacity="0.7">
+              <path d="M476,62 C420,90 400,110 395,138" marker-end="url(#arrow)"/>
+              <path d="M476,238 C420,210 400,190 395,163" marker-end="url(#arrow)"/>
+            </g>
+            <g font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor" opacity="0.75">
+              <text x="398" y="102">heartbeat + отчёт трафика</text>
+              <text x="398" y="210">раз в 30с</text>
+            </g>
+          </svg>
+          <figcaption>Клиент получает список нод и подписанный токен у панели один раз, затем сессия идёт напрямую клиент↔нода. Нода отчитывается панели о трафике, но не спрашивает разрешения на каждую сессию.</figcaption>
+        </figure>
+
+        <p>Ключевое архитектурное решение: <strong>токен сессии подписан ключом самой ноды</strong>, а не общим секретом панели.
+        Нода проверяет подпись локально (HMAC-SHA256), без обращения к панели — значит, установление сессии не зависит
+        от доступности панели в момент подключения.</p>
+      </section>
+
+      <section id="glossary">
+        <h2><span class="num">02</span> Термины<a class="anchor-link" href="#glossary">#</a></h2>
+        <div class="kv-grid">
+          <dt>Панель</dt><dd>Центральный сервис: хранит пользователей, подписки, список нод и статистику. Один процесс <code class="inline">rookeryp</code>, своя SQLite.</dd>
+          <dt>Нода</dt><dd>Relay-сервер, который реально гоняет трафик. Не хранит пользователей — только свой <code class="inline">node_id</code>/<code class="inline">api_key</code>, выданные панелью. Процесс <code class="inline">rookeryd</code>, отдельный репозиторий.</dd>
+          <dt>Пользователь / подписка</dt><dd>В Rookery это одно и то же: у пользователя один токен, одна ссылка, один набор доступных нод — без отдельной сущности «подписка» поверх пользователя.</dd>
+          <dt>Токен сессии</dt><dd>Короткоживущий (по умолчанию 6ч) токен, который панель подписывает ключом конкретной ноды при каждом запросе <code class="inline">/sub/{token}</code>.</dd>
+        </div>
+      </section>
+
+      <section id="quickstart">
+        <h2><span class="num">03</span> Быстрый старт<a class="anchor-link" href="#quickstart">#</a></h2>
+        <p class="section-desc">От пустого VDS до первого подключения клиента.</p>
+        <ol class="step-list">
+          <li>
+            <strong>Поднять панель</strong>
+            <div class="code-block">
+              <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+              <pre><code>mkdir -p ~/rookery-panel &amp;&amp; cd ~/rookery-panel
+curl -O https://raw.githubusercontent.com/proxt/rookery/master/panel/deploy/docker-compose.yml
+sudo docker compose up -d
+sudo docker compose logs   # тут будет пароль администратора</code></pre>
+            </div>
+          </li>
+          <li>
+            <strong>Зайти в <code class="inline">/admin</code>, добавить ноду</strong>
+            <p>Вкладка «Ноды» → «Добавить ноду» → скопировать выданные <code class="inline">node_id</code> и <code class="inline">api_key</code>.</p>
+          </li>
+          <li>
+            <strong>Поднять ноду с этими данными</strong>
+            <div class="code-block">
+              <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+              <pre><code>mkdir -p ~/rookery-node &amp;&amp; cd ~/rookery-node
+curl -O https://raw.githubusercontent.com/proxt/rookery-node/master/deploy/docker-compose.yml
+cat &gt; node.yaml &lt;&lt;EOF
+panel_addr: "http://127.0.0.1:8090"
+node_id: "&lt;выдано панелью&gt;"
+api_key: "&lt;выдано панелью&gt;"
+EOF
+sudo docker compose up -d</code></pre>
+            </div>
+            <div class="callout note"><span class="callout-title">Локальный адрес панели</span><p>Если нода и панель на одном хосте, <code class="inline">panel_addr</code> — <code class="inline">http://127.0.0.1:&lt;порт&gt;</code>: нода стучится по внутреннему адресу, а публичный домен ей не нужен.</p></div>
+          </li>
+          <li>
+            <strong>Создать пользователя и привязать ноду</strong>
+            <p>Вкладка «Пользователи» → «Добавить» → открыть карточку → вкладка «Ноды» → отметить нужные → «Сохранить». Ссылка — во вкладке «Инфо».</p>
+          </li>
+          <li>
+            <strong>Вставить ссылку в клиенте</strong>
+            <p>Вкладка «Подписки» → вставить <code class="inline">rookery://sub/…</code> (или обычную https-ссылку — работают обе) → «Добавить» → выбрать сервер → «Подключить».</p>
+          </li>
+        </ol>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="panel-install">
+        <h2><span class="num">04</span> Панель · установка<a class="anchor-link" href="#panel-install">#</a></h2>
+        <p class="section-desc">Панель — чистый HTTP-сервис (без WebRTC/ICE), поэтому обычный <code class="inline">docker compose</code> без host-сети.</p>
+        <div class="code-block">
+          <div class="code-head"><span>panel/deploy/docker-compose.yml</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>services:
+  rookery-panel:
+    image: ghcr.io/proxt/rookery-panel:latest
+    container_name: rookery-panel
+    restart: always
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - rookery_panel_data:/data
+
+volumes:
+  rookery_panel_data:</code></pre>
+        </div>
+        <p>Ничего настраивать вручную не нужно: при первом запуске панель сама генерирует логин администратора
+        и печатает пароль один раз в <code class="inline">docker compose logs</code> — сохраните его, второй раз не покажется.</p>
+        <div class="callout warn">
+          <span class="callout-title">Порт слушает 0.0.0.0, не 127.0.0.1</span>
+          <p>Панель специально слушает все интерфейсы <em>внутри</em> контейнера — иначе трафик, пришедший через
+          проброс порта Docker (bridge-сеть), не долетает до процесса. Наружу доступ уже ограничен строкой
+          <code class="inline">127.0.0.1:8090:8090</code> в compose-файле, поэтому снаружи порт всё равно закрыт
+          без Caddy.</p>
+        </div>
+      </section>
+
+      <section id="panel-autoupdate">
+        <h2><span class="num">05</span> Автообновление<a class="anchor-link" href="#panel-autoupdate">#</a></h2>
+        <p class="section-desc">Compose-файл уже содержит <a class="mono" href="https://containrrr.dev/watchtower/" target="_blank" rel="noopener">watchtower</a> — он раз в 5 минут проверяет ghcr.io и сам перезапускает контейнер на новом образе. Ручной <code class="inline">docker compose pull &amp;&amp; up -d</code> после пуша в master не нужен ни панели, ни ноде.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+            <tbody>
+              <tr><td><code class="inline">--interval</code></td><td>300 секунд</td></tr>
+              <tr><td><code class="inline">--cleanup</code></td><td>удаляет старый образ после обновления</td></tr>
+              <tr><td>Простой при обновлении</td><td>несколько секунд на перезапуск контейнера</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Как проверить, что обновление реально применилось</h3>
+        <p>Внизу боковой панели администратора — под именем текущего админа — есть строка
+        «Обновлено: …». Это не время последнего опроса watchtower, а момент сборки <em>именно того</em>
+        образа, который сейчас выполняется (панель встраивает время сборки и commit в бинарь через
+        <code class="inline">-ldflags</code> при CI-сборке и отдаёт их на <code class="inline">GET /admin/api/version</code>).
+        Если после пуша в master эта дата не сдвинулась через 5–10 минут — watchtower не смог обновить контейнер.</p>
+
+        <div class="callout warn">
+          <span class="callout-title">Панель и нода на одном хосте</span>
+          <p>У watchtower есть штатное поведение: увидев на хосте больше одного своего контейнера, он считает
+          второй «устаревшей копией себя» и останавливает его — если панель и нода развёрнуты на одном сервере,
+          их отдельные watchtower-сайдкары будут убивать друг друга. Оба compose-файла ставят
+          <code class="inline">WATCHTOWER_SCOPE</code> (свой на панель, свой на ноду) — это единственное, что их
+          разводит; убирать эту переменную при совместном хостинге нельзя.</p>
+        </div>
+      </section>
+
+      <section id="panel-nodes">
+        <h2><span class="num">06</span> Управление нодами<a class="anchor-link" href="#panel-nodes">#</a></h2>
+        <p class="section-desc">Вкладка «Ноды». Каждая нода — имя, публичный адрес и теги (страна/метка) для группировки.</p>
+        <p>При создании панель выдаёт <code class="inline">api_key</code> — <strong>это единственный раз, когда его показывают полностью в форме создания</strong>
+        (позже он всё ещё виден в карточке ноды, но храните его так же бережно, как пароль: им подписываются токены сессий для этой ноды).</p>
+        <p>Карточка ноды показывает статус <span class="badge post">online</span> / <span class="badge delete">offline</span> (по heartbeat, окно 2 минуты),
+        время последнего heartbeat и суммарный трафик через эту ноду.</p>
+
+        <div class="mockup">
+          <div class="mockup-bar">
+            <span class="mockup-dot" style="background:#ff5f57"></span>
+            <span class="mockup-dot" style="background:#febc2e"></span>
+            <span class="mockup-dot" style="background:#28c840"></span>
+            <span class="mockup-url">rookery.example.com/admin/nodes</span>
+          </div>
+          <div class="mockup-app">
+            <div class="mockup-cards">
+              <div class="mockup-card">
+                <div class="mockup-card-head"><span class="mockup-card-name">Чехия · CZ</span><span class="mockup-pill ok">online</span></div>
+                <div class="mockup-card-row"><span>Heartbeat</span><b>12 с назад</b></div>
+                <div class="mockup-card-row"><span>Трафик</span><b>412 ГБ</b></div>
+              </div>
+              <div class="mockup-card">
+                <div class="mockup-card-head"><span class="mockup-card-name">Германия · DE</span><span class="mockup-pill ok">online</span></div>
+                <div class="mockup-card-row"><span>Heartbeat</span><b>4 с назад</b></div>
+                <div class="mockup-card-row"><span>Трафик</span><b>1.1 ТБ</b></div>
+              </div>
+              <div class="mockup-card">
+                <div class="mockup-card-head"><span class="mockup-card-name">Нидерланды · NL</span><span class="mockup-pill danger">offline</span></div>
+                <div class="mockup-card-row"><span>Heartbeat</span><b>18 мин назад</b></div>
+                <div class="mockup-card-row"><span>Трафик</span><b>87 ГБ</b></div>
+              </div>
+              <div class="mockup-card">
+                <div class="mockup-card-head"><span class="mockup-card-name">Финляндия · FI</span><span class="mockup-pill ok">online</span></div>
+                <div class="mockup-card-row"><span>Heartbeat</span><b>9 с назад</b></div>
+                <div class="mockup-card-row"><span>Трафик</span><b>203 ГБ</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="mockup-caption">Карточки нод: статус по heartbeat, время последнего сигнала, суммарный трафик за всё время.</p>
+      </section>
+
+      <section id="panel-users">
+        <h2><span class="num">07</span> Пользователи и подписки<a class="anchor-link" href="#panel-users">#</a></h2>
+        <p class="section-desc">Пользователь = подписка: у каждого один токен, одна ссылка, свой набор нод. Карточка пользователя открывается по клику на строку и разбита на три вкладки.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Вкладка</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Инфо</strong></td><td>имя, переключатель «активна», начало/окончание действия, ссылка подписки с копированием</td></tr>
+              <tr><td><strong>Ноды</strong></td><td>чекбоксы — какие ноды доступны этому пользователю</td></tr>
+              <tr><td><strong>Статистика</strong></td><td>трафик всего + график за последние 7 дней</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Чтобы подписка была бессрочной, поставьте галочку «Без ограничений по времени» — она очищает оба поля дат.
+        В списке пользователей это отображается как <em>Бессрочно</em> вместо даты, а онлайн-статус показывает, была ли
+        активность за последние 2 минуты (по отчётам трафика от ноды).</p>
+
+        <div class="mockup">
+          <div class="mockup-bar">
+            <span class="mockup-dot" style="background:#ff5f57"></span>
+            <span class="mockup-dot" style="background:#febc2e"></span>
+            <span class="mockup-dot" style="background:#28c840"></span>
+            <span class="mockup-url">rookery.example.com/admin/</span>
+          </div>
+          <div class="mockup-app">
+            <div class="mockup-shell">
+              <aside class="mockup-sidebar">
+                <div class="mockup-brand"><img class="mockup-brand-mark" src="logo.png" alt=""> ROOKERY</div>
+                <nav class="mockup-nav">
+                  <span class="mockup-nav-item">Обзор</span>
+                  <span class="mockup-nav-item active">Пользователи</span>
+                  <span class="mockup-nav-item">Ноды</span>
+                  <span class="mockup-nav-item">Обновления</span>
+                  <span class="mockup-nav-item">Админы</span>
+                  <span class="mockup-nav-item">Настройки</span>
+                </nav>
+              </aside>
+              <div class="mockup-main">
+                <div class="mockup-toolbar">
+                  <span class="mockup-title">Пользователи</span>
+                  <span class="mockup-btn">+ Добавить</span>
+                </div>
+                <table class="mockup-table">
+                  <thead><tr><th>Имя</th><th>Статус</th><th>Онлайн</th><th>Ноды</th><th>Окончание</th></tr></thead>
+                  <tbody>
+                    <tr><td>Иван Петров</td><td><span class="mockup-pill ok">Активен</span></td><td><span class="mockup-pill ok">В сети</span></td><td>2 ноды</td><td>Бессрочно</td></tr>
+                    <tr><td>reseller-cz-01</td><td><span class="mockup-pill ok">Активен</span></td><td><span class="mockup-pill muted">Не в сети</span></td><td>Чехия</td><td>14.10.2026</td></tr>
+                    <tr><td>test-trial</td><td><span class="mockup-pill danger">Истёк</span></td><td><span class="mockup-pill muted">Не в сети</span></td><td>—</td><td>01.09.2026</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="mockup-caption">Список пользователей: статус подписки, «в сети» по трафику за последние 2 минуты, набор нод, дата окончания или «Бессрочно».</p>
+      </section>
+
+      <section id="panel-stats">
+        <h2><span class="num">08</span> Статистика<a class="anchor-link" href="#panel-stats">#</a></h2>
+        <p class="section-desc">Вкладка «Обзор»: число пользователей, нод онлайн, трафик за 24ч и всего, график трафика
+        с переключением диапазона (24ч / 7д / 30д). Те же данные доступны для отдельного пользователя или ноды
+        через их карточки — см. также <a href="#api-stats">API статистики</a>.</p>
+      </section>
+
+      <section id="panel-admins">
+        <h2><span class="num">09</span> Администраторы<a class="anchor-link" href="#panel-admins">#</a></h2>
+        <p class="section-desc">Логинов в панель может быть сколько угодно — не общий на всех, а свой у каждого.</p>
+        <ul>
+          <li>Создать нового — вкладка «Админы», логин + пароль от 8 символов.</li>
+          <li>Удалить нельзя себя и нельзя последнего оставшегося админа — панель откажет с 400.</li>
+          <li>Смена собственного пароля — там же, требует текущий пароль.</li>
+        </ul>
+      </section>
+
+      <section id="panel-releases">
+        <h2><span class="num">10</span> Обновления клиента<a class="anchor-link" href="#panel-releases">#</a></h2>
+        <p class="section-desc">Панель одновременно раздаёт билды клиента: вкладка «Обновления» — загрузить установщик
+        (версия + заметки + файл), список загруженных версий, у каждой — кнопка «Скачать» (публичная ссылка,
+        работает и без приложения) и удаление.</p>
+        <p>Последняя загруженная версия автоматически становится «актуальной» — её видит клиентское приложение
+        при проверке обновлений (кнопка «Проверить обновления» в Настройках клиента, сверяет со своей версией).</p>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="api-auth">
+        <h2><span class="num">11</span> API панели · аутентификация<a class="anchor-link" href="#api-auth">#</a></h2>
+        <p class="section-desc">Все <code class="inline">/admin/api/*</code> эндпоинты, кроме логина, требуют cookie-сессию.
+        Ниже — примеры на <code class="inline">curl</code> со сквозным cookie-файлом.</p>
+
+        <div class="endpoint">
+          <span class="badge post">POST</span>
+          <code>/admin/api/login</code>
+        </div>
+        <div class="endpoint-body">
+          <p>Тело: <code class="inline">{"username": "...", "password": "..."}</code>. При успехе ставит cookie <code class="inline">rookery_admin_session</code> (24ч) и отвечает 204.</p>
+          <div class="code-block">
+            <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+            <pre><code>curl -c cookies.txt -X POST https://panel.example.com/admin/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"..."}'</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint"><span class="badge post">POST</span><code>/admin/api/logout</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Отзывает текущий токен сессии.</p></div>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/admin/api/session</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Возвращает текущего админа: <code class="inline">{"id": "...", "username": "..."}</code>. Способ проверить, что сессия ещё жива.</p></div>
+      </section>
+
+      <section id="api-users">
+        <h2><span class="num">12</span> API панели · пользователи<a class="anchor-link" href="#api-users">#</a></h2>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/admin/api/users</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Список всех пользователей с их нодами и ссылкой подписки.</p></div>
+
+        <div class="endpoint"><span class="badge post">POST</span><code>/admin/api/users</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body">
+          <p>Тело: <code class="inline">{"name": "..."}</code>. Создаёт пользователя со случайным токеном.</p>
+          <div class="code-block">
+            <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+            <pre><code>curl -b cookies.txt -X POST https://panel.example.com/admin/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Иван"}'</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/admin/api/users/{id}</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Один пользователь по ID.</p></div>
+
+        <div class="endpoint"><span class="badge put">PUT</span><code>/admin/api/users/{id}</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Тело: <code class="inline">{"name", "enabled", "starts_at", "expires_at"}</code>. Даты — RFC3339 или пустая строка (без ограничения).</p></div>
+
+        <div class="endpoint"><span class="badge put">PUT</span><code>/admin/api/users/{id}/nodes</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body">
+          <p>Тело: <code class="inline">{"node_ids": ["..."]}</code>. Полностью заменяет набор нод пользователя.</p>
+        </div>
+
+        <div class="endpoint"><span class="badge delete">DELETE</span><code>/admin/api/users/{id}</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Удаляет пользователя и его статистику. Старая ссылка сразу перестаёт работать.</p></div>
+      </section>
+
+      <section id="api-nodes">
+        <h2><span class="num">13</span> API панели · ноды<a class="anchor-link" href="#api-nodes">#</a></h2>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/admin/api/nodes</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Список нод с <code class="inline">api_key</code>, статусом и временем последнего heartbeat.</p></div>
+
+        <div class="endpoint"><span class="badge post">POST</span><code>/admin/api/nodes</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body">
+          <p>Тело: <code class="inline">{"name", "address", "tags"}</code>. Возвращает ноду вместе со свежесгенерированным <code class="inline">api_key</code> — его вписывают в <code class="inline">node.yaml</code> той ноды.</p>
+        </div>
+
+        <div class="endpoint"><span class="badge patch">PATCH</span><code>/admin/api/nodes/{id}</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Тело: <code class="inline">{"name", "address", "tags", "enabled"}</code>.</p></div>
+
+        <div class="endpoint"><span class="badge delete">DELETE</span><code>/admin/api/nodes/{id}</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Удаляет ноду. Развёрнутый процесс ноды продолжит отвечать, но токены для неё панель больше не подпишет.</p></div>
+      </section>
+
+      <section id="api-stats">
+        <h2><span class="num">14</span> API панели · статистика<a class="anchor-link" href="#api-stats">#</a></h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Метод и путь</th><th>Возвращает</th></tr></thead>
+            <tbody>
+              <tr><td><code class="inline">GET /admin/api/stats/overview</code></td><td>пользователи, ноды онлайн, трафик за 24ч и всего</td></tr>
+              <tr><td><code class="inline">GET /admin/api/stats/timeseries?hours=24</code></td><td>почасовые точки трафика по всем пользователям/нодам</td></tr>
+              <tr><td><code class="inline">GET /admin/api/stats/users/{id}</code></td><td>суммарный трафик одного пользователя</td></tr>
+              <tr><td><code class="inline">GET /admin/api/stats/users/{id}/series?hours=168</code></td><td>почасовой график для одного пользователя</td></tr>
+              <tr><td><code class="inline">GET /admin/api/stats/nodes/{id}</code></td><td>суммарный трафик одной ноды</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code class="inline">hours</code> — необязательный параметр, по умолчанию 24, максимум 720 (30 дней).</p>
+      </section>
+
+      <section id="api-releases">
+        <h2><span class="num">15</span> API панели · релизы<a class="anchor-link" href="#api-releases">#</a></h2>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/admin/api/releases</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Список загруженных версий, новые сверху.</p></div>
+
+        <div class="endpoint"><span class="badge post">POST</span><code>/admin/api/releases</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body">
+          <p><code class="inline">multipart/form-data</code>: поля <code class="inline">version</code>, <code class="inline">notes</code>, файл в поле <code class="inline">file</code>. Лимит — 500 МБ.</p>
+          <div class="code-block">
+            <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+            <pre><code>curl -b cookies.txt -X POST https://panel.example.com/admin/api/releases \
+  -F "version=0.3.0" \
+  -F "notes=Список изменений" \
+  -F "file=@rookery-amd64-installer.exe"</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint"><span class="badge delete">DELETE</span><code>/admin/api/releases/{id}</code><span class="endpoint-auth">требует сессию</span></div>
+        <div class="endpoint-body"><p>Удаляет версию из списка и файл с диска.</p></div>
+      </section>
+
+      <section id="api-public">
+        <h2><span class="num">16</span> Публичные эндпоинты<a class="anchor-link" href="#api-public">#</a></h2>
+        <p class="section-desc">Без cookie-сессии — их дёргает клиент и произвольные посетители по прямой ссылке.</p>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/sub/{token}</code></div>
+        <div class="endpoint-body">
+          <p>Открытая в браузере — красивая HTML-страница подписки с кнопкой «Установить в приложение».
+          С заголовком <code class="inline">Accept: application/json</code> (так делает клиент) — чистый JSON со списком нод
+          и подписанным токеном сессии для каждой.</p>
+
+          <div class="mockup">
+            <div class="mockup-bar">
+              <span class="mockup-dot" style="background:#ff5f57"></span>
+              <span class="mockup-dot" style="background:#febc2e"></span>
+              <span class="mockup-dot" style="background:#28c840"></span>
+              <span class="mockup-url">rookery.example.com/sub/8f2a1c…</span>
+            </div>
+            <div class="mockup-app">
+              <div class="mockup-sub">
+                <img class="mockup-sub-mark" src="logo.png" alt="">
+                <div class="mockup-sub-name">Иван Петров</div>
+                <div class="mockup-sub-meta">Подписка активна до 14.10.2026 · 2 ноды</div>
+                <div class="mockup-sub-actions">
+                  <span class="mockup-sub-btn">Установить в приложение</span>
+                  <span class="mockup-sub-btn secondary">Скопировать ссылку</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="mockup-caption">Так видит ссылку любой браузер — открытая с <code class="inline">Accept: text/html</code>. Кнопка «Установить» — это тот же <code class="inline">rookery://</code>-диплинк, что и в клиенте.</p>
+
+          <div class="code-block">
+            <div class="code-head"><span>json</span><button class="copy-btn" data-copy>Копировать</button></div>
+            <pre><code>{
+  "name": "Иван",
+  "nodes": [
+    {
+      "id": "539254cb7c8c",
+      "name": "Чехия",
+      "tags": "CZ",
+      "address": "https://node.example.com",
+      "session_token": "eyJ1aWQiOiIuLi4ifQ.a1b2c3..."
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/releases/latest</code></div>
+        <div class="endpoint-body"><p>Метаданные последнего загруженного релиза — то, что опрашивает апдейтер клиента.</p></div>
+
+        <div class="endpoint"><span class="badge get">GET</span><code>/releases/{id}/download</code></div>
+        <div class="endpoint-body"><p>Сам файл, с <code class="inline">Content-Disposition: attachment</code>.</p></div>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="node-install">
+        <h2><span class="num">17</span> Нода · установка<a class="anchor-link" href="#node-install">#</a></h2>
+        <p class="section-desc">Нода живёт в отдельном репозитории — <a href="https://github.com/proxt/rookery-node" target="_blank" rel="noopener">proxt/rookery-node</a> — и не требует ничего из репозитория панели для сборки. Сначала зарегистрируйте ноду в панели (см. <a href="#panel-nodes">Управление нодами</a>), затем:</p>
+        <div class="code-block">
+          <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>mkdir -p ~/rookery-node &amp;&amp; cd ~/rookery-node
+curl -O https://raw.githubusercontent.com/proxt/rookery-node/master/deploy/docker-compose.yml
+cat &gt; node.yaml &lt;&lt;EOF
+panel_addr: "https://panel.example.com"
+node_id: "..."
+api_key: "..."
+EOF
+sudo docker compose up -d</code></pre>
+        </div>
+        <div class="callout warn">
+          <span class="callout-title">network_mode: host не опционален</span>
+          <p>ICE-агент pion собирает host-кандидаты из сетевых интерфейсов контейнера. В обычной bridge-сети это
+          внутренний адрес Docker (172.x), который снаружи недостижим — с ним подключение клиентов не установится.
+          <code class="inline">network_mode: host</code> в compose-файле уже настроен именно поэтому.</p>
+        </div>
+      </section>
+
+      <section id="node-bare">
+        <h2><span class="num">18</span> Нода · без Docker<a class="anchor-link" href="#node-bare">#</a></h2>
+        <p class="section-desc">Собрать бинарь и запустить как systemd-юнит.</p>
+        <div class="code-block">
+          <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>git clone https://github.com/proxt/rookery-node.git
+cd rookery-node
+make build   # bin/rookeryd — статический линукс-бинарь, CGO_ENABLED=0
+
+sudo mkdir -p /opt/rookery
+sudo cp bin/rookeryd /opt/rookery/rookeryd
+sudo cp deploy/systemd/rookery-node.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now rookery-node</code></pre>
+        </div>
+        <p>Юнит уже настроен с <code class="inline">NoNewPrivileges</code>, <code class="inline">ProtectSystem=strict</code>, без лишних capabilities.
+        Пароль/данные ноды не хранятся локально — читать логи не нужно, вся конфигурация в <code class="inline">node.yaml</code>.</p>
+      </section>
+
+      <section id="node-config">
+        <h2><span class="num">19</span> Конфигурация ноды<a class="anchor-link" href="#node-config">#</a></h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Поле</th><th>По умолчанию</th><th>Описание</th></tr></thead>
+            <tbody>
+              <tr><td><code class="inline">panel_addr</code></td><td>—, обязательно</td><td>Базовый адрес панели, на которую нода шлёт heartbeat и отчёты</td></tr>
+              <tr><td><code class="inline">node_id</code></td><td>—, обязательно</td><td>Выдан панелью при регистрации</td></tr>
+              <tr><td><code class="inline">api_key</code></td><td>—, обязательно</td><td>Выдан панелью; им нода проверяет токены сессий локально</td></tr>
+              <tr><td><code class="inline">listen_addr</code></td><td><code class="inline">127.0.0.1:8080</code></td><td>Адрес HTTP-сигналинга, за ним стоит Caddy</td></tr>
+              <tr><td><code class="inline">ice_udp_port</code></td><td><code class="inline">51000</code></td><td>Единственный UDP-порт для WebRTC/ICE</td></tr>
+              <tr><td><code class="inline">max_streams_per_session</code></td><td><code class="inline">256</code></td><td>Лимит одновременных smux-потоков на клиента</td></tr>
+              <tr><td><code class="inline">dial_timeout_seconds</code></td><td><code class="inline">10</code></td><td>Таймаут исходящего соединения до цели</td></tr>
+              <tr><td><code class="inline">allow_private_net</code></td><td><code class="inline">false</code></td><td>Разрешить релей на RFC1918/loopback-адреса</td></tr>
+              <tr><td><code class="inline">buffered_amount_low_kb</code> / <code class="inline">_high_kb</code></td><td>256 / 1024</td><td>Пороги backpressure на DataChannel</td></tr>
+              <tr><td><code class="inline">log_level</code></td><td><code class="inline">info</code></td><td><code class="inline">debug</code> / <code class="inline">info</code> / <code class="inline">warn</code> / <code class="inline">error</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="node-ports">
+        <h2><span class="num">20</span> Порты<a class="anchor-link" href="#node-ports">#</a></h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Порт</th><th>Наружу?</th><th>Зачем</th></tr></thead>
+            <tbody>
+              <tr><td>TCP 443 (и 80 для ACME)</td><td>да</td><td>Caddy: TLS + HTTP-сигналинг</td></tr>
+              <tr><td>UDP <code class="inline">ice_udp_port</code> (51000)</td><td>да</td><td>WebRTC/ICE, единственный нужный UDP-порт — диапазон эфемерных портов не используется</td></tr>
+              <tr><td><code class="inline">listen_addr</code> (127.0.0.1:8080)</td><td>нет</td><td>Внутренний, к нему проксирует Caddy</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="caddy">
+        <h2><span class="num">21</span> Caddy и домен<a class="anchor-link" href="#caddy">#</a></h2>
+        <p class="section-desc">И панель, и нода — обычный HTTP за Caddy, который сам получает TLS-сертификат.</p>
+
+        <h3>Для ноды</h3>
+        <div class="code-block">
+          <div class="code-head"><span>Caddyfile</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>node.example.com {
+	reverse_proxy 127.0.0.1:8080
+}</code></pre>
+        </div>
+
+        <h3>Для панели</h3>
+        <p>Если панель на своём поддомене — так же просто, один <code class="inline">reverse_proxy</code>.
+        Если панель и нода делят один домен, маршрутизируйте по пути — панель занимает только эти четыре префикса:</p>
+        <div class="code-block">
+          <div class="code-head"><span>Caddyfile</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>example.com {
+	handle /admin* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle /sub/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle /sub-assets/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle /api/nodes/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle /releases/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8080
+	}
+}</code></pre>
+        </div>
+        <div class="callout tip">
+          <span class="callout-title">После правки конфига</span>
+          <p><code class="inline">caddy validate --config /etc/caddy/Caddyfile &amp;&amp; sudo systemctl reload caddy</code> —
+          если конфиг невалиден, Caddy откажется применять его и останется на прежнем, так что сайт не упадёт от опечатки.</p>
+        </div>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="client-gui">
+        <h2><span class="num">22</span> Клиент · GUI<a class="anchor-link" href="#client-gui">#</a></h2>
+        <p class="section-desc">Windows-приложение на Wails: вкладки Главная / Подписки / Настройки / О программе.</p>
+        <ul>
+          <li><strong>Добавление подписки</strong> — вкладка «Подписки», вставить ссылку (принимает и <code class="inline">rookery://sub/…</code>, и обычную <code class="inline">https://panel/sub/{token}</code>). Также срабатывает автоматически по клику на «Установить в приложение» на странице подписки — приложение зарегистрировано обработчиком схемы <code class="inline">rookery://</code>.</li>
+          <li><strong>Выбор сервера</strong> — разворачиваете подписку, отмечаете нужную ноду.</li>
+          <li><strong>Системный VPN</strong> — в Настройках, заворачивает весь трафик ОС через виртуальный адаптер (Wintun), а не только приложения с SOCKS5. Требует прав администратора.</li>
+          <li><strong>Обновления</strong> — кнопка «Проверить обновления» в Настройках, см. <a href="#client-update">ниже</a>.</li>
+        </ul>
+
+        <div class="mockup mockup-phone">
+          <div class="mockup-bar">
+            <span class="mockup-dot" style="background:#ff5f57"></span>
+            <span class="mockup-dot" style="background:#febc2e"></span>
+            <span class="mockup-dot" style="background:#28c840"></span>
+            <span class="mockup-url">Rookery</span>
+          </div>
+          <div class="mockup-app">
+            <div class="mockup-main">
+              <div class="mockup-sub-tab">
+                <div class="mockup-sub-tab-head"><span>Мой VPN</span><span class="mockup-pill ok">подключено</span></div>
+                <div class="mockup-node-row"><span class="mockup-radio"></span><span>Германия · DE</span></div>
+                <div class="mockup-node-row"><span class="mockup-radio checked"></span><span>Чехия · CZ</span></div>
+              </div>
+              <div class="mockup-connect-btn">Подключить</div>
+            </div>
+          </div>
+        </div>
+        <p class="mockup-caption">Вкладка «Подписки»: разворачиваете карточку — видите список нод этой подписки и выбираете, к какой подключиться.</p>
+      </section>
+
+      <section id="client-cli">
+        <h2><span class="num">23</span> Клиент · CLI<a class="anchor-link" href="#client-cli">#</a></h2>
+        <p class="section-desc">Headless-вариант для серверов/скриптов — тот же движок, без окна.</p>
+        <div class="code-block">
+          <div class="code-head"><span>client.yaml</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>panel_addr: "https://panel.example.com"
+token: "&lt;токен подписки&gt;"
+token_env: ""            # или имя переменной окружения вместо token
+node_id: ""               # пусто — берётся первая нода из подписки
+socks_addr: "127.0.0.1:1080"
+buffered_amount_low_kb: 256
+buffered_amount_high_kb: 1024
+reconnect_max_backoff_seconds: 30
+system_wide: false
+log_level: "info"</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span>bash</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>rookery-cli -config client.yaml</code></pre>
+        </div>
+      </section>
+
+      <section id="client-link">
+        <h2><span class="num">24</span> Формат ссылки<a class="anchor-link" href="#client-link">#</a></h2>
+        <p class="section-desc">Ссылка кодирует адрес панели и токен подписки, ничего больше — список нод клиент получает,
+        уже обратившись по этой ссылке к панели.</p>
+        <div class="code-block">
+          <div class="code-head"><span>schema</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>rookery://sub/&lt;base64url(JSON)&gt;
+
+// где JSON:
+{ "p": "https://panel.example.com", "t": "&lt;токен&gt;" }</code></pre>
+        </div>
+        <p>Клиент одинаково принимает и эту схему, и обычную <code class="inline">https://panel.example.com/sub/{token}</code> —
+        именно её показывает адресная строка браузера на странице подписки и кнопка «Копировать ссылку».</p>
+      </section>
+
+      <section id="client-update">
+        <h2><span class="num">25</span> Автообновление приложения<a class="anchor-link" href="#client-update">#</a></h2>
+        <p class="section-desc">В отличие от сервера, обновление клиента — по кнопке, не молча в фоне: заменить исполняемый
+        файл на лету, пока он запущен, нельзя.</p>
+        <ol class="step-list">
+          <li><strong>Проверить</strong><p>Настройки → «Проверить обновления» — сверяет версию с панелью <em>активной подписки</em> (<code class="inline">GET /releases/latest</code>).</p></li>
+          <li><strong>Скачать и установить</strong><p>Приложение качает установщик во временную папку, запускает его (наследует уже полученные права администратора — второго запроса UAC не будет) и закрывается само, чтобы установщик мог перезаписать файлы.</p></li>
+        </ol>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="protocol-token">
+        <h2><span class="num">26</span> Протокол · токен сессии<a class="anchor-link" href="#protocol-token">#</a></h2>
+        <p class="section-desc">Токен — не JWT и не что-то стандартное, но устроен похоже: подпись поверх полезной нагрузки.</p>
+        <div class="code-block">
+          <div class="code-head"><span>go</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>type Claims struct {
+    UserID string `+"`json:\"uid\"`"+`
+    NodeID string `+"`json:\"nid\"`"+`
+    Expiry int64  `+"`json:\"exp\"`"+` // unix seconds
+}
+
+// token = base64url(JSON(claims)) + "." + hex(HMAC-SHA256(payload, node_api_key))</code></pre>
+        </div>
+        <p>Панель подписывает токен ключом <em>той конкретной ноды</em>, для которой он выдан — ключ другой ноды
+        такой токен не провалидирует. Нода проверяет подпись сама, локально, без обращения к панели: время жизни
+        токена (по умолчанию 6 часов) — это и есть механизм отзыва доступа, а не отдельный вызов «можно ли ему».</p>
+      </section>
+
+      <section id="protocol-transport">
+        <h2><span class="num">27</span> Протокол · транспорт<a class="anchor-link" href="#protocol-transport">#</a></h2>
+        <p class="section-desc">Один WebRTC DataChannel на сессию, поверх него — <a href="https://github.com/xtaci/smux" target="_blank" rel="noopener">smux</a> мультиплексирует все TCP/UDP-потоки клиента.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Слой</th><th>Настройка</th></tr></thead>
+            <tbody>
+              <tr><td>SCTP (association)</td><td>окно приёма поднято до 64 МБ — дефолт pion/sctp в 1 МБ иначе ограничивает всю ассоциацию сильнее, чем окно smux</td></tr>
+              <tr><td>smux (per-stream)</td><td>4 МБ на поток, 64 МБ на сессию — дефолт 64 КБ ограничивает throughput одного потока до window/RTT</td></tr>
+              <tr><td>DataChannel (recv)</td><td>буфер входящих сообщений на 2048 штук — иначе медленный потребитель на одном потоке душит приём для всех остальных</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr class="div"/>
+
+      <section id="troubleshooting">
+        <h2><span class="num">28</span> Устранение неполадок<a class="anchor-link" href="#troubleshooting">#</a></h2>
+
+        <h3>Панель отвечает «connection reset» через Docker</h3>
+        <p>Проверьте <code class="inline">listen_addr</code> в конфиге панели — должен быть <code class="inline">0.0.0.0:PORT</code>,
+        а не <code class="inline">127.0.0.1:PORT</code>. При bridge-сети (в отличие от <code class="inline">network_mode: host</code> у ноды)
+        трафик от проброса порта приходит на интерфейс контейнера, а не на его loopback.</p>
+
+        <h3>404 на путях панели через общий домен с нодой</h3>
+        <p>Проверьте, что в Caddy размечены все пять путей панели (<code class="inline">/admin</code>, <code class="inline">/sub/</code>,
+        <code class="inline">/sub-assets/</code>, <code class="inline">/api/nodes/</code>, <code class="inline">/releases/</code>) —
+        см. <a href="#caddy">пример конфига</a>. Всё, что не попало ни в один <code class="inline">handle</code>, уходит на ноду.</p>
+
+        <h3>Скорость упирается в потолок независимо от канала</h3>
+        <p>Почти всегда — узкое окно на одном из трёх уровней транспорта (SCTP / smux / приёмный канал DataChannel),
+        см. <a href="#protocol-transport">транспорт</a>. Симптом: throughput не растёт с более быстрым сервером —
+        значит, упирается не в канал, а в буфер где-то в стеке.</p>
+
+        <h3>Нода запускается и сразу падает в перезапуск</h3>
+        <p><code class="inline">panel_addr</code>, <code class="inline">node_id</code> и <code class="inline">api_key</code> в
+        <code class="inline">node.yaml</code> обязательны — без них <code class="inline">rookeryd</code> завершается с ошибкой
+        валидации конфига ещё до старта HTTP-сервера. Проверьте <code class="inline">docker compose logs</code>.</p>
+
+        <h3>Watchtower в рестарт-лупе или молчит вместо обновления</h3>
+        <p>Проверьте <code class="inline">docker logs &lt;имя&gt;-watchtower</code>. Ошибка
+        <code class="inline">client version … is too old</code> значит, что образ
+        <code class="inline">containrrr/watchtower:latest</code> старый (последний вышел в конце 2023) и его клиент
+        занижает версию Docker API ниже минимальной, которую понимает движок — задайте
+        <code class="inline">DOCKER_API_VERSION</code> в переменных окружения контейнера (см.
+        <a href="#panel-autoupdate">Автообновление</a>). Если панель и нода на одном хосте, а обновляется
+        только одна из двух — проверьте, что у обоих watchtower задан свой <code class="inline">WATCHTOWER_SCOPE</code>,
+        иначе один экземпляр считает другой «своей устаревшей копией» и останавливает его.</p>
+
+        <h3>Приложение не подхватывает ссылку по клику «Установить»</h3>
+        <p>Схема <code class="inline">rookery://</code> регистрируется инсталлятором в реестре Windows
+        (<code class="inline">HKEY_CLASSES_ROOT\rookery</code>) — если приложение стояло до пересборки инсталлятора
+        с этой функцией, переустановите через новый <code class="inline">rookery-amd64-installer.exe</code>.</p>
+      </section>
+
+      <footer class="docfoot">
+        Rookery · <a href="https://github.com/proxt/rookery" target="_blank" rel="noopener">proxt/rookery</a> ·
+        <a href="https://github.com/proxt/rookery-node" target="_blank" rel="noopener">proxt/rookery-node</a>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<button class="menu-toggle" id="menuToggle" aria-label="Открыть оглавление" aria-expanded="false">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
+
+<script>
+(function () {
+  // theme toggle
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem('rookery-docs-theme'); } catch (e) {}
+  if (stored === 'light' || stored === 'dark') root.setAttribute('data-theme', stored);
+  function setTheme(t) {
+    if (t === 'system') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', t);
+    try { localStorage.setItem('rookery-docs-theme', t); } catch (e) {}
+    document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-theme-btn') === t);
+    });
+  }
+  var initial = (stored === 'light' || stored === 'dark') ? stored : 'system';
+  document.querySelectorAll('[data-theme-btn]').forEach(function (b) {
+    b.classList.toggle('active', b.getAttribute('data-theme-btn') === initial);
+    b.addEventListener('click', function () { setTheme(b.getAttribute('data-theme-btn')); });
+  });
+
+  // copy buttons
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.closest('.code-block').querySelector('pre');
+      var text = pre ? pre.innerText : '';
+      navigator.clipboard.writeText(text).then(function () {
+        var orig = btn.textContent;
+        btn.textContent = 'Скопировано';
+        btn.classList.add('copied');
+        setTimeout(function () { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+      }).catch(function () {});
+    });
+  });
+
+  // mobile sidebar
+  var sidebar = document.getElementById('sidebar');
+  var scrim = document.getElementById('scrim');
+  var toggle = document.getElementById('menuToggle');
+  function closeMenu() { sidebar.classList.remove('open'); scrim.classList.remove('show'); toggle.setAttribute('aria-expanded', 'false'); }
+  function openMenu() { sidebar.classList.add('open'); scrim.classList.add('show'); toggle.setAttribute('aria-expanded', 'true'); }
+  toggle.addEventListener('click', function () { sidebar.classList.contains('open') ? closeMenu() : openMenu(); });
+  scrim.addEventListener('click', closeMenu);
+  sidebar.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', closeMenu); });
+
+  // scrollspy
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var targets = links.map(function (l) { return document.querySelector(l.getAttribute('href')); }).filter(Boolean);
+  function onScroll() {
+    var pos = window.scrollY + 120;
+    var current = null;
+    targets.forEach(function (t) { if (t.offsetTop <= pos) current = t; });
+    links.forEach(function (l) { l.classList.remove('active'); });
+    if (current) {
+      var match = links.find(function (l) { return l.getAttribute('href') === '#' + current.id; });
+      if (match) match.classList.add('active');
+    }
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
