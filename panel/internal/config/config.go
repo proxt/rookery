@@ -22,7 +22,14 @@ type Config struct {
 // config file.
 func Defaults() Config {
 	return Config{
-		ListenAddr:         "127.0.0.1:8090",
+		// 0.0.0.0, not 127.0.0.1: under the default Docker Compose deploy
+		// (bridge networking, not host mode like the node uses), binding to
+		// the container's own loopback makes the app unreachable through
+		// Docker's port publishing — traffic arrives on the container's
+		// bridge interface, not its loopback. External exposure is already
+		// restricted by docker-compose.yml's "127.0.0.1:8090:8090" mapping
+		// on the host side.
+		ListenAddr:         "0.0.0.0:8090",
 		DataDir:            "/data",
 		SessionTokenTTLMin: 360, // 6h — client subscription refresh interval must stay well under this
 		LogLevel:           "info",
