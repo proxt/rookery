@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rookery Panel</title>
+<style>
+  :root {
+    --bg: #0b0d11;
+    --surface: #171a21;
+    --surface-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e5e7eb;
+    --muted: #8b93a1;
+    --accent: #4f7cff;
+    --danger: #e0453f;
+    --ok: #22c55e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  body { display: flex; justify-content: center; padding: 40px 16px; }
+  .wrap { width: 100%; max-width: 960px; }
+  h1 { font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
+  h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cols { display: flex; gap: 8px; flex-wrap: wrap; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  input, select {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 9px 11px; font-size: 14px; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  button {
+    cursor: pointer; border: none; border-radius: 8px; padding: 9px 14px;
+    font-size: 13px; font-weight: 500; background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+  button:hover { filter: brightness(1.1); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  code { background: var(--surface-2); border-radius: 4px; padding: 2px 5px; font-size: 12px; word-break: break-all; }
+  .muted { color: var(--muted); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tabs button { background: transparent; border-color: transparent; }
+  .tabs button.active { background: var(--surface); border-color: var(--border); color: var(--accent); }
+  .pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+  .pill.ok { background: rgba(34,197,94,.15); color: var(--ok); }
+  .pill.off { background: rgba(139,147,161,.15); color: var(--muted); }
+  .err { color: var(--danger); font-size: 13px; margin-top: 8px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .stat .n { font-size: 20px; font-weight: 600; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  a { color: var(--accent); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rookery Panel</h1>
+
+  <div id="login-view" class="card" style="max-width:360px">
+    <div style="margin-bottom:12px"><label>Логин</label><input id="login-username" autocomplete="username"></div>
+    <div style="margin-bottom:12px"><label>Пароль</label><input id="login-password" type="password" autocomplete="current-password"></div>
+    <button class="primary" id="login-btn" style="width:100%">Войти</button>
+    <div class="err" id="login-err" hidden></div>
+  </div>
+
+  <div id="app-view" hidden>
+    <div class="row" style="margin-bottom:16px">
+      <div class="tabs">
+        <button data-tab="overview" class="active">Обзор</button>
+        <button data-tab="users">Пользователи</button>
+        <button data-tab="subscriptions">Подписки</button>
+        <button data-tab="nodes">Ноды</button>
+        <button data-tab="settings">Настройки</button>
+      </div>
+      <button id="logout-btn">Выйти</button>
+    </div>
+
+    <div data-panel="overview" class="card">
+      <h2>Обзор</h2>
+      <div class="stat-grid" id="overview-grid"></div>
+    </div>
+
+    <div data-panel="users" class="card" hidden>
+      <h2>Пользователи</h2>
+      <div class="cols" style="margin-bottom:12px">
+        <input id="user-name" placeholder="Имя" style="max-width:240px">
+        <button class="primary" id="user-add">Добавить</button>
+      </div>
+      <table><thead><tr><th>Имя</th><th>ID</th><th>Трафик</th><th></th></tr></thead><tbody id="users-body"></tbody></table>
+    </div>
+
+    <div data-panel="subscriptions" class="card" hidden>
+      <h2>Подписки</h2>
+      <div class="cols" style="margin-bottom:12px">
+        <select id="sub-user" style="max-width:200px"></select>
+        <input id="sub-name" placeholder="Название подписки" style="max-width:200px">
+        <button class="primary" id="sub-add">Добавить</button>
+      </div>
+      <table><thead><tr><th>Название</th><th>Пользователь</th><th>Ссылка</th><th>Ноды</th><th></th></tr></thead><tbody id="subs-body"></tbody></table>
+    </div>
+
+    <div data-panel="nodes" class="card" hidden>
+      <h2>Ноды</h2>
+      <div class="cols" style="margin-bottom:12px">
+        <input id="node-name" placeholder="Название" style="max-width:160px">
+        <input id="node-address" placeholder="https://node.example.com" style="max-width:220px">
+        <input id="node-tags" placeholder="Теги (страна, метка)" style="max-width:160px">
+        <button class="primary" id="node-add">Добавить</button>
+      </div>
+      <table><thead><tr><th>Название</th><th>Адрес</th><th>API-ключ</th><th>Онлайн</th><th>Трафик</th><th></th></tr></thead><tbody id="nodes-body"></tbody></table>
+    </div>
+
+    <div data-panel="settings" class="card" hidden>
+      <h2>Настройки</h2>
+      <div style="max-width:420px;margin-bottom:16px">
+        <label>Публичный адрес панели (для ссылок подписок)</label>
+        <input id="settings-public-addr" placeholder="https://panel.example.com">
+        <button class="primary" id="settings-save" style="margin-top:8px">Сохранить</button>
+      </div>
+      <div style="max-width:420px">
+        <label>Текущий пароль</label>
+        <input id="cred-current" type="password">
+        <label style="margin-top:8px">Новый логин (необязательно)</label>
+        <input id="cred-username">
+        <label style="margin-top:8px">Новый пароль (необязательно)</label>
+        <input id="cred-password" type="password">
+        <button class="primary" id="cred-save" style="margin-top:8px">Обновить</button>
+      </div>
+      <div class="err" id="settings-err" hidden></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (sel, el) => (el || document).querySelector(sel);
+const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 401) { showLogin(); throw new Error("unauthorized"); }
+  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function fmtBytes(n) {
+  n = Number(n) || 0;
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return n.toFixed(i === 0 ? 0 : 1) + " " + units[i];
+}
+
+function showLogin() {
+  $("#app-view").hidden = true;
+  $("#login-view").hidden = false;
+}
+function showApp() {
+  $("#login-view").hidden = true;
+  $("#app-view").hidden = false;
+  loadAll();
+}
+
+$("#login-btn").addEventListener("click", async () => {
+  $("#login-err").hidden = true;
+  try {
+    await api("POST", "/admin/api/login", {
+      username: $("#login-username").value,
+      password: $("#login-password").value,
+    });
+    showApp();
+  } catch (e) {
+    $("#login-err").textContent = "Неверный логин или пароль";
+    $("#login-err").hidden = false;
+  }
+});
+$("#logout-btn").addEventListener("click", async () => { await api("POST", "/admin/api/logout"); showLogin(); });
+
+$$(".tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$(".tabs button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    $$("[data-panel]").forEach((p) => (p.hidden = p.dataset.panel !== btn.dataset.tab));
+  });
+});
+
+let usersCache = [];
+let nodesCache = [];
+
+async function loadAll() {
+  await Promise.all([loadOverview(), loadUsers(), loadNodes(), loadSubscriptions(), loadSettings()]);
+}
+
+async function loadOverview() {
+  const o = await api("GET", "/admin/api/stats/overview");
+  $("#overview-grid").innerHTML = [
+    ["Пользователи", o.user_count],
+    ["Подписки", o.subscription_count],
+    ["Ноды онлайн", o.nodes_online + " / " + o.node_count],
+    ["Трафик за 24ч", fmtBytes(o.today.bytes_up + o.today.bytes_down)],
+    ["Трафик всего", fmtBytes(o.all_time.bytes_up + o.all_time.bytes_down)],
+  ].map(([l, n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+}
+
+async function loadUsers() {
+  usersCache = await api("GET", "/admin/api/users");
+  $("#sub-user").innerHTML = usersCache.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
+  const rows = await Promise.all(usersCache.map(async (u) => {
+    const t = await api("GET", `/admin/api/stats/users/${u.id}`);
+    return `<tr><td>${u.name}</td><td class="muted">${u.id}</td><td>${fmtBytes(t.bytes_up + t.bytes_down)}</td>
+      <td><button class="danger" data-del-user="${u.id}">Удалить</button></td></tr>`;
+  }));
+  $("#users-body").innerHTML = rows.join("");
+  $$("[data-del-user]").forEach((b) => b.addEventListener("click", async () => {
+    if (!confirm("Удалить пользователя и все его подписки?")) return;
+    await api("DELETE", `/admin/api/users/${b.dataset.delUser}`);
+    loadUsers(); loadSubscriptions(); loadOverview();
+  }));
+}
+$("#user-add").addEventListener("click", async () => {
+  const name = $("#user-name").value.trim();
+  if (!name) return;
+  await api("POST", "/admin/api/users", { name });
+  $("#user-name").value = "";
+  loadUsers(); loadOverview();
+});
+
+async function loadNodes() {
+  nodesCache = await api("GET", "/admin/api/nodes");
+  const rows = await Promise.all(nodesCache.map(async (n) => {
+    const t = await api("GET", `/admin/api/stats/nodes/${n.id}`);
+    const online = n.last_seen_at && (Date.now() - new Date(n.last_seen_at).getTime()) < 120000;
+    return `<tr>
+      <td>${n.name}<br><span class="muted">${n.tags || ""}</span></td>
+      <td>${n.address}</td>
+      <td><code>${n.api_key}</code></td>
+      <td><span class="pill ${online ? "ok" : "off"}">${online ? "online" : "offline"}</span></td>
+      <td>${fmtBytes(t.bytes_up + t.bytes_down)}</td>
+      <td><button class="danger" data-del-node="${n.id}">Удалить</button></td>
+    </tr>`;
+  }));
+  $("#nodes-body").innerHTML = rows.join("");
+  $$("[data-del-node]").forEach((b) => b.addEventListener("click", async () => {
+    if (!confirm("Удалить ноду?")) return;
+    await api("DELETE", `/admin/api/nodes/${b.dataset.delNode}`);
+    loadNodes(); loadSubscriptions(); loadOverview();
+  }));
+}
+$("#node-add").addEventListener("click", async () => {
+  const name = $("#node-name").value.trim();
+  const address = $("#node-address").value.trim();
+  const tags = $("#node-tags").value.trim();
+  if (!name || !address) return;
+  await api("POST", "/admin/api/nodes", { name, address, tags });
+  $("#node-name").value = ""; $("#node-address").value = ""; $("#node-tags").value = "";
+  loadNodes(); loadOverview();
+});
+
+async function loadSubscriptions() {
+  const subs = await api("GET", "/admin/api/subscriptions");
+  const rows = subs.map((s) => {
+    const user = usersCache.find((u) => u.id === s.user_id);
+    const nodeChecks = nodesCache.map((n) => {
+      const checked = s.nodes.some((sn) => sn.id === n.id) ? "checked" : "";
+      return `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;font-size:12px;color:var(--text)">
+        <input type="checkbox" data-sub-node="${s.id}" value="${n.id}" ${checked}>${n.name}</label>`;
+    }).join("");
+    return `<tr>
+      <td>${s.name}</td>
+      <td>${user ? user.name : s.user_id}</td>
+      <td><code>${s.sub_url}</code></td>
+      <td>${nodeChecks || '<span class="muted">нет нод</span>'}</td>
+      <td><button class="danger" data-del-sub="${s.id}">Удалить</button></td>
+    </tr>`;
+  });
+  $("#subs-body").innerHTML = rows.join("");
+  $$("[data-sub-node]").forEach((cb) => cb.addEventListener("change", async () => {
+    const subID = cb.dataset.subNode;
+    const nodeIDs = $$(`[data-sub-node="${subID}"]:checked`).map((c) => c.value);
+    await api("PUT", `/admin/api/subscriptions/${subID}/nodes`, { node_ids: nodeIDs });
+  }));
+  $$("[data-del-sub]").forEach((b) => b.addEventListener("click", async () => {
+    if (!confirm("Удалить подписку?")) return;
+    await api("DELETE", `/admin/api/subscriptions/${b.dataset.delSub}`);
+    loadSubscriptions(); loadOverview();
+  }));
+}
+$("#sub-add").addEventListener("click", async () => {
+  const user_id = $("#sub-user").value;
+  const name = $("#sub-name").value.trim();
+  if (!user_id || !name) return;
+  await api("POST", "/admin/api/subscriptions", { user_id, name });
+  $("#sub-name").value = "";
+  loadSubscriptions(); loadOverview();
+});
+
+async function loadSettings() {
+  const s = await api("GET", "/admin/api/settings");
+  $("#settings-public-addr").value = s.public_addr;
+  $("#cred-username").placeholder = s.admin_username;
+}
+$("#settings-save").addEventListener("click", async () => {
+  await api("PUT", "/admin/api/settings", { public_addr: $("#settings-public-addr").value.trim() });
+  loadSubscriptions();
+});
+$("#cred-save").addEventListener("click", async () => {
+  $("#settings-err").hidden = true;
+  try {
+    await api("PUT", "/admin/api/credentials", {
+      current_password: $("#cred-current").value,
+      new_username: $("#cred-username").value.trim(),
+      new_password: $("#cred-password").value,
+    });
+    $("#cred-current").value = ""; $("#cred-username").value = ""; $("#cred-password").value = "";
+    loadSettings();
+  } catch (e) {
+    $("#settings-err").textContent = "Не удалось обновить: проверьте текущий пароль";
+    $("#settings-err").hidden = false;
+  }
+});
+
+api("GET", "/admin/api/session").then(showApp).catch(showLogin);
+</script>
+</body>
+</html>

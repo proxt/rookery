@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -153,14 +152,18 @@ func (e *Engine) connectOnce(ctx context.Context, cfg Config) error {
 
 // exchangeSDP POSTs offerSDP to the node's signaling endpoint and returns its
 // answer SDP.
+//
+// TODO(phase 2): the node now authenticates SessionRequest.Token — a
+// panel-issued, node-scoped token fetched from the panel's /sub/{token}
+// endpoint — instead of a per-user secret the client holds directly. cfg.
+// Secret is passed through as a placeholder so this still compiles; it will
+// not authenticate against a panel-backed node until the client is reworked
+// around subscriptions (see the plan's Phase 2).
 func (e *Engine) exchangeSDP(ctx context.Context, cfg Config, offerSDP string) (string, error) {
-	reqBody, err := json.Marshal(signaling.SessionRequest{UserID: cfg.UserID, SDP: offerSDP})
+	reqBody, err := json.Marshal(signaling.SessionRequest{SDP: offerSDP, Token: cfg.Secret})
 	if err != nil {
 		return "", fmt.Errorf("marshal offer: %w", err)
 	}
-
-	ts := time.Now().Unix()
-	sig := signaling.Sign([]byte(cfg.Secret), ts, reqBody)
 
 	url := strings.TrimSuffix(cfg.NodeAddr, "/") + "/session"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
@@ -168,8 +171,6 @@ func (e *Engine) exchangeSDP(ctx context.Context, cfg Config, offerSDP string) (
 		return "", fmt.Errorf("build request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set(signaling.HeaderTimestamp, strconv.FormatInt(ts, 10))
-	httpReq.Header.Set(signaling.HeaderSignature, sig)
 
 	resp, err := e.httpClient.Do(httpReq)
 	if err != nil {

@@ -1,0 +1,8 @@
+# Copy to Caddyfile on the panel host and replace the hostname below with
+# your own. Caddy terminates TLS (automatic ACME/Let's Encrypt certificate)
+# and reverse-proxies everything to rookeryp's loopback HTTP server — the
+# admin panel, the node API, and /sub/{token} all live behind this one host.
+
+your-panel-hostname.example.com {
+	reverse_proxy 127.0.0.1:8090
+}

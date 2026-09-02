@@ -1,0 +1,20 @@
+# This file is entirely optional — the panel runs with sane defaults out of
+# the box (see panel/internal/config.Defaults()). Copy this to panel.yaml and
+# uncomment only what you actually want to override.
+
+# Address the HTTP server (admin panel + node API + /sub/{token}) binds to.
+# Caddy terminates TLS in front of this and reverse-proxies to it; keep it
+# loopback-only.
+# listen_addr: "127.0.0.1:8090"
+
+# Where the panel's SQLite database (users, subscriptions, nodes, admin
+# login, stats) lives. Point this at the volume/bind-mount you persist
+# across container restarts.
+# data_dir: "/data"
+
+# How long a session token issued via /sub/{token} stays valid. The client
+# refreshes its subscription well before this to pick up a fresh token, so
+# this mainly bounds how quickly revoking a subscription/node takes effect.
+# session_token_ttl_minutes: 360
+
+# log_level: "info"

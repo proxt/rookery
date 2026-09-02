@@ -1,0 +1,23 @@
+# Deploy: put this file on the VDS and run `docker compose up -d` — no
+# config file needed, the panel generates everything (admin login) into the
+# rookery_panel_data volume on first start. The generated admin password is
+# printed once to `docker compose logs` — log in at
+# http://<this-host>:8090/admin (or through Caddy, see the README) to set
+# your public address, add nodes, and create users/subscriptions.
+#
+# Unlike the node, the panel does plain HTTP (no WebRTC/ICE), so it doesn't
+# need host networking — a normal published port is fine.
+services:
+  rookery-panel:
+    image: ghcr.io/proxt/rookery-panel:latest
+    container_name: rookery-panel
+    restart: always
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - rookery_panel_data:/data
+      # Optional: drop a panel.yaml here to override defaults.
+      # - ./panel.yaml:/etc/rookery/panel.yaml:ro
+
+volumes:
+  rookery_panel_data:

@@ -1,0 +1,120 @@
+// Package store is the panel's SQLite-backed persistence: users,
+// subscriptions, the nodes they grant access to, admin login, and traffic
+// stats reported by nodes.
+package store
+
+import (
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
+	"fmt"
+
+	_ "modernc.org/sqlite"
+)
+
+// Store wraps the panel's single SQLite database.
+type Store struct {
+	db *sql.DB
+}
+
+// Open opens (creating if necessary) the SQLite database at path and runs
+// migrations.
+func Open(path string) (*Store, error) {
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, fmt.Errorf("store: open %s: %w", path, err)
+	}
+	// modernc.org/sqlite serializes access to a single file at the driver
+	// level; capping the pool at one connection avoids SQLITE_BUSY churn
+	// from concurrent writers without needing WAL/busy-timeout tuning. It
+	// also means this pragma only needs setting once, not per-connection.
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("store: enable foreign keys: %w", err)
+	}
+
+	s := &Store{db: db}
+	if err := s.migrate(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return s, nil
+}
+
+// Close closes the underlying database.
+func (s *Store) Close() error {
+	return s.db.Close()
+}
+
+func (s *Store) migrate() error {
+	_, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS admin (
+			id            INTEGER PRIMARY KEY CHECK (id = 1),
+			username      TEXT NOT NULL,
+			password_hash TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS settings (
+			id          INTEGER PRIMARY KEY CHECK (id = 1),
+			public_addr TEXT NOT NULL DEFAULT ''
+		);
+		INSERT OR IGNORE INTO settings (id, public_addr) VALUES (1, '');
+
+		CREATE TABLE IF NOT EXISTS users (
+			id         TEXT PRIMARY KEY,
+			name       TEXT NOT NULL,
+			created_at TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS nodes (
+			id            TEXT PRIMARY KEY,
+			name          TEXT NOT NULL,
+			address       TEXT NOT NULL,
+			api_key       TEXT NOT NULL,
+			tags          TEXT NOT NULL DEFAULT '',
+			enabled       INTEGER NOT NULL DEFAULT 1,
+			last_seen_at  TEXT NOT NULL DEFAULT '',
+			created_at    TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS subscriptions (
+			id         TEXT PRIMARY KEY,
+			user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			name       TEXT NOT NULL,
+			token      TEXT NOT NULL UNIQUE,
+			enabled    INTEGER NOT NULL DEFAULT 1,
+			expires_at TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+
+		CREATE TABLE IF NOT EXISTS subscription_nodes (
+			subscription_id TEXT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+			node_id         TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+			PRIMARY KEY (subscription_id, node_id)
+		);
+
+		CREATE TABLE IF NOT EXISTS stat_samples (
+			subscription_id TEXT NOT NULL,
+			node_id         TEXT NOT NULL,
+			bucket_hour     TEXT NOT NULL,
+			bytes_up        INTEGER NOT NULL DEFAULT 0,
+			bytes_down      INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (subscription_id, node_id, bucket_hour)
+		);
+		CREATE INDEX IF NOT EXISTS idx_stat_samples_bucket ON stat_samples(bucket_hour);
+	`)
+	if err != nil {
+		return fmt.Errorf("store: migrate: %w", err)
+	}
+	return nil
+}
+
+func randomToken(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("store: generate random token: %w", err)
+	}
+	return hex.EncodeToString(b), nil
+}

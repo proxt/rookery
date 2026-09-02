@@ -1,12 +1,12 @@
-.PHONY: build-node build-cli build-gui docker-build test lint clean
+.PHONY: build-panel build-cli build-gui docker-build test lint clean
 
-build-node:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/rookeryd ./node/cmd/rookeryd
+build-panel:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/rookeryp ./panel/cmd/rookeryp
 
-# Builds the node's Docker image locally, e.g. for testing before it's built
-# by CI and published to ghcr.io on push (see .github/workflows/node-docker.yml).
+# Builds the panel's Docker image locally, e.g. for testing before it's built
+# by CI and published to ghcr.io on push (see .github/workflows/panel-docker.yml).
 docker-build:
-	docker build -f node/Dockerfile -t rookery-node .
+	docker build -f panel/Dockerfile -t rookery-panel .
 
 build-cli:
 	go build -o bin/rookery-cli ./client/cmd/rookery-cli
@@ -19,10 +19,10 @@ build-gui:
 	cp client/gui/wintun/wintun.dll client/gui/build/bin/wintun.dll
 
 test:
-	go test ./client/... ./node/... ./shared/...
+	go test ./client/... ./panel/... ./shared/...
 
 lint:
-	go vet ./client/... ./node/... ./shared/...
+	go vet ./client/... ./panel/... ./shared/...
 
 clean:
 	rm -rf bin/
