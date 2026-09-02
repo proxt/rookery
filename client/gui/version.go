@@ -4,4 +4,4 @@ package main
 // a subscription's panel reports (see CheckForUpdate). Bump it whenever a
 // new build is uploaded to a panel's Releases tab, so the comparison in
 // CheckForUpdate actually reflects reality.
-const AppVersion = "0.2.0"
+const AppVersion = "0.3.0"

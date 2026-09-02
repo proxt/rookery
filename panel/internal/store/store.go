@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -68,13 +69,14 @@ func (s *Store) migrate() error {
 		-- happ model this (one subscription URL per user), rather than a
 		-- user owning multiple named subscriptions.
 		CREATE TABLE IF NOT EXISTS users (
-			id         TEXT PRIMARY KEY,
-			name       TEXT NOT NULL,
-			token      TEXT NOT NULL UNIQUE,
-			enabled    INTEGER NOT NULL DEFAULT 1,
-			starts_at  TEXT NOT NULL DEFAULT '',
-			expires_at TEXT NOT NULL DEFAULT '',
-			created_at TEXT NOT NULL
+			id             TEXT PRIMARY KEY,
+			name           TEXT NOT NULL,
+			token          TEXT NOT NULL UNIQUE,
+			enabled        INTEGER NOT NULL DEFAULT 1,
+			starts_at      TEXT NOT NULL DEFAULT '',
+			expires_at     TEXT NOT NULL DEFAULT '',
+			last_active_at TEXT NOT NULL DEFAULT '',
+			created_at     TEXT NOT NULL
 		);
 
 		CREATE TABLE IF NOT EXISTS nodes (
@@ -116,6 +118,21 @@ func (s *Store) migrate() error {
 	`)
 	if err != nil {
 		return fmt.Errorf("store: migrate: %w", err)
+	}
+
+	// CREATE TABLE IF NOT EXISTS above doesn't add columns to a table that
+	// already exists from an earlier version — do that by hand, tolerating
+	// the "already there" case, so upgrading doesn't require wiping data.
+	if err := s.addColumnIfMissing("users", "last_active_at", `TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) addColumnIfMissing(table, column, def string) error {
+	_, err := s.db.Exec(fmt.Sprintf(`ALTER TABLE %s ADD COLUMN %s %s`, table, column, def))
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "duplicate column name") {
+		return fmt.Errorf("store: add column %s.%s: %w", table, column, err)
 	}
 	return nil
 }

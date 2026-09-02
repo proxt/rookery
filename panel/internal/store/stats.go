@@ -36,7 +36,7 @@ func (s *Store) RecordTraffic(userID, nodeID string, bytesUp, bytesDown uint64) 
 	if err != nil {
 		return fmt.Errorf("store: record traffic: %w", err)
 	}
-	return nil
+	return s.TouchUserActivity(userID)
 }
 
 // TotalsForUser sums all-time traffic for one user.

@@ -11,13 +11,14 @@ import (
 // rookery:// link), an enabled flag, an optional active window, and the set
 // of nodes it grants access to.
 type User struct {
-	ID        string
-	Name      string
-	Token     string
-	Enabled   bool
-	StartsAt  string // RFC3339Nano, or "" for no lower bound
-	ExpiresAt string // RFC3339Nano, or "" for never
-	CreatedAt time.Time
+	ID           string
+	Name         string
+	Token        string
+	Enabled      bool
+	StartsAt     string // RFC3339Nano, or "" for no lower bound
+	ExpiresAt    string // RFC3339Nano, or "" for never
+	LastActiveAt string // RFC3339Nano, or "" if never reported traffic
+	CreatedAt    time.Time
 }
 
 // ErrNotFound is returned when a lookup or delete targets an unknown ID.
@@ -25,7 +26,7 @@ var ErrNotFound = errors.New("store: not found")
 
 // ListUsers returns all users, newest first.
 func (s *Store) ListUsers() ([]User, error) {
-	rows, err := s.db.Query(`SELECT id, name, token, enabled, starts_at, expires_at, created_at
+	rows, err := s.db.Query(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, created_at
 		FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("store: list users: %w", err)
@@ -48,7 +49,7 @@ func (s *Store) ListUsers() ([]User, error) {
 
 // GetUser returns the user with the given ID.
 func (s *Store) GetUser(id string) (User, error) {
-	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, created_at
+	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, created_at
 		FROM users WHERE id = ?`, id)
 	u, err := scanUserRow(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -60,7 +61,7 @@ func (s *Store) GetUser(id string) (User, error) {
 // GetUserByToken looks up a user by their subscription token — used by the
 // client-facing /sub/{token} endpoint.
 func (s *Store) GetUserByToken(token string) (User, error) {
-	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, created_at
+	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, created_at
 		FROM users WHERE token = ?`, token)
 	u, err := scanUserRow(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -104,6 +105,18 @@ func (s *Store) UpdateUser(id, name string, enabled bool, startsAt, expiresAt st
 	}
 	if n == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+// TouchUserActivity records that traffic was just reported for a user —
+// what the admin UI's "online" indicator is based on. Best-effort: called
+// from RecordTraffic, where a user not existing (deleted mid-session, say)
+// shouldn't fail the traffic report itself.
+func (s *Store) TouchUserActivity(id string) error {
+	_, err := s.db.Exec(`UPDATE users SET last_active_at = ? WHERE id = ?`, time.Now().UTC().Format(time.RFC3339Nano), id)
+	if err != nil {
+		return fmt.Errorf("store: touch user activity: %w", err)
 	}
 	return nil
 }
@@ -183,7 +196,7 @@ func scanUser(rows *sql.Rows) (User, error) {
 	var u User
 	var enabled int
 	var createdAt string
-	if err := rows.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &createdAt); err != nil {
+	if err := rows.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &u.LastActiveAt, &createdAt); err != nil {
 		return User{}, fmt.Errorf("store: scan user: %w", err)
 	}
 	u.Enabled = enabled != 0
@@ -199,7 +212,7 @@ func scanUserRow(row *sql.Row) (User, error) {
 	var u User
 	var enabled int
 	var createdAt string
-	if err := row.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &createdAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &u.LastActiveAt, &createdAt); err != nil {
 		return User{}, err
 	}
 	u.Enabled = enabled != 0

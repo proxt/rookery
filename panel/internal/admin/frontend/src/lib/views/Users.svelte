@@ -2,9 +2,11 @@
   import { flip } from 'svelte/animate'
   import { fade } from 'svelte/transition'
   import { api } from '../api.js'
-  import { formatDateTime } from '../format.js'
+  import { formatDateTime, relativeTime } from '../format.js'
   import Pill from '../Pill.svelte'
   import UserModal from '../UserModal.svelte'
+
+  const ONLINE_WINDOW_MS = 2 * 60 * 1000
 
   let users = $state([])
   let nodes = $state([])
@@ -32,6 +34,15 @@
     if (u.expires_at && new Date(u.expires_at) < new Date()) return { tone: 'danger', label: 'Истёк' }
     if (u.starts_at && new Date(u.starts_at) > new Date()) return { tone: 'warn', label: 'Ожидает' }
     return { tone: 'ok', label: 'Активен' }
+  }
+
+  function isOnline(u) {
+    return u.last_active_at && Date.now() - new Date(u.last_active_at).getTime() < ONLINE_WINDOW_MS
+  }
+
+  function expiryOf(u) {
+    if (!u.expires_at) return 'Бессрочно'
+    return formatDateTime(u.expires_at)
   }
 
   async function createUser() {
@@ -88,14 +99,16 @@
           <tr class="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
             <th class="px-4 py-3 font-medium">Имя</th>
             <th class="px-4 py-3 font-medium">Статус</th>
+            <th class="px-4 py-3 font-medium">Онлайн</th>
             <th class="px-4 py-3 font-medium">Ноды</th>
-            <th class="px-4 py-3 font-medium">Создан</th>
+            <th class="px-4 py-3 font-medium">Окончание</th>
             <th class="px-4 py-3 font-medium"></th>
           </tr>
         </thead>
         <tbody>
           {#each filtered as u (u.id)}
             {@const status = statusOf(u)}
+            {@const online = isOnline(u)}
             <tr
               class="cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-surface-2/60"
               onclick={() => (openUserId = u.id)}
@@ -104,10 +117,16 @@
             >
               <td class="px-4 py-3 font-medium">{u.name}</td>
               <td class="px-4 py-3"><Pill tone={status.tone}>{status.label}</Pill></td>
+              <td class="px-4 py-3">
+                <Pill tone={online ? 'ok' : 'muted'}>{online ? 'В сети' : 'Не в сети'}</Pill>
+                {#if !online && u.last_active_at}
+                  <div class="mt-0.5 text-[11px] text-muted">{relativeTime(u.last_active_at)}</div>
+                {/if}
+              </td>
               <td class="px-4 py-3 text-muted">
                 {u.nodes.length === 0 ? '—' : u.nodes.length === 1 ? u.nodes[0].name : `${u.nodes.length} нод`}
               </td>
-              <td class="px-4 py-3 text-muted">{formatDateTime(u.created_at)}</td>
+              <td class="px-4 py-3 text-muted">{expiryOf(u)}</td>
               <td class="px-4 py-3 text-right">
                 <button class="icon-btn" title="Скопировать ссылку" onclick={(e) => copyLink(u, e)}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
