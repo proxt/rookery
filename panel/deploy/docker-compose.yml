@@ -7,6 +7,12 @@
 #
 # Unlike the node, the panel does plain HTTP (no WebRTC/ICE), so it doesn't
 # need host networking — a normal published port is fine.
+#
+# watchtower polls ghcr.io every 5 minutes and restarts rookery-panel on a
+# new :latest — no manual `docker compose pull && up -d` after a push.
+# Restarting briefly drops the panel (a few seconds); active client
+# sessions on the node are unaffected, since the node doesn't depend on the
+# panel being reachable to keep relaying already-issued tokens.
 services:
   rookery-panel:
     image: ghcr.io/proxt/rookery-panel:latest
@@ -18,6 +24,14 @@ services:
       - rookery_panel_data:/data
       # Optional: drop a panel.yaml here to override defaults.
       # - ./panel.yaml:/etc/rookery/panel.yaml:ro
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: rookery-panel-watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup rookery-panel
 
 volumes:
   rookery_panel_data:
