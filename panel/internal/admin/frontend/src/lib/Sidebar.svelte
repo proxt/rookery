@@ -1,6 +1,7 @@
 <script>
   import logo from '../assets/logo.png'
-  let { active = 'dashboard', onselect, onlogout, adminUsername = '' } = $props()
+  import { formatDateTime } from './format.js'
+  let { active = 'dashboard', onselect, onlogout, adminUsername = '', buildTime = '' } = $props()
 
   const items = [
     { id: 'dashboard', label: 'Обзор', icon: 'M4 11.5 12 4l8 7.5M6 10v9h12v-9' },
@@ -56,5 +57,10 @@
         </svg>
       </button>
     </div>
+    {#if buildTime}
+      <div class="mt-1 px-2 text-[10px] text-muted" title={formatDateTime(buildTime)}>
+        Обновлено: {formatDateTime(buildTime)}
+      </div>
+    {/if}
   </div>
 </aside>

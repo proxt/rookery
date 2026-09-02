@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/rookery/panel/internal/buildinfo"
 	"github.com/rookery/panel/internal/store"
 )
 
@@ -37,6 +38,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/api/login", s.handleLogin)
 	mux.HandleFunc("POST /admin/api/logout", s.requireAuth(s.handleLogout))
 	mux.HandleFunc("GET /admin/api/session", s.requireAuth(s.handleSessionCheck))
+	mux.HandleFunc("GET /admin/api/version", s.requireAuth(s.handleVersion))
 	mux.HandleFunc("GET /admin/api/settings", s.requireAuth(s.handleGetSettings))
 	mux.HandleFunc("PUT /admin/api/settings", s.requireAuth(s.handleUpdateSettings))
 	mux.HandleFunc("PUT /admin/api/account/password", s.requireAuth(s.handleChangeOwnPassword))
@@ -143,6 +145,10 @@ func (s *Server) handleSessionCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]string{"id": a.ID, "username": a.Username})
+}
+
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]string{"build_time": buildinfo.BuildTime, "commit": buildinfo.Commit})
 }
 
 func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {

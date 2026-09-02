@@ -31,6 +31,7 @@ export const api = {
   login: (username, password) => request('POST', '/admin/api/login', { username, password }),
   logout: () => request('POST', '/admin/api/logout'),
   session: () => request('GET', '/admin/api/session'),
+  version: () => request('GET', '/admin/api/version'),
 
   getSettings: () => request('GET', '/admin/api/settings'),
   updateSettings: (publicAddr) => request('PUT', '/admin/api/settings', { public_addr: publicAddr }),

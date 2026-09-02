@@ -9,6 +9,9 @@ RUN npm run build
 
 FROM golang:1.27-alpine AS builder
 
+ARG BUILD_TIME=unknown
+ARG BUILD_COMMIT=unknown
+
 ENV GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 WORKDIR /src
 
@@ -18,7 +21,8 @@ COPY panel/ panel/
 COPY --from=frontend /src/panel/internal/admin/frontend/dist panel/internal/admin/frontend/dist
 
 WORKDIR /src/panel
-RUN go build -o /out/rookeryp ./cmd/rookeryp
+RUN go build -ldflags "-X github.com/rookery/panel/internal/buildinfo.BuildTime=${BUILD_TIME} -X github.com/rookery/panel/internal/buildinfo.Commit=${BUILD_COMMIT}" \
+    -o /out/rookeryp ./cmd/rookeryp
 
 # Plain (root) distroless, not :nonroot — /data is a bind/named volume the
 # operator owns, and there's no shell here to chown it to a fixed non-root

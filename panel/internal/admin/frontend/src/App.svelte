@@ -13,12 +13,23 @@
   let authed = $state(null) // null = checking, false = login, true = app
   let tab = $state('dashboard')
   let adminUsername = $state('')
+  let buildTime = $state('')
+
+  async function loadVersion() {
+    try {
+      const v = await api.version()
+      buildTime = v.build_time && v.build_time !== 'unknown' ? v.build_time : ''
+    } catch {
+      buildTime = ''
+    }
+  }
 
   async function checkAuth() {
     try {
       const s = await api.session()
       authed = true
       adminUsername = s.username
+      loadVersion()
     } catch {
       authed = false
     }
@@ -29,6 +40,7 @@
     const s = await api.session()
     authed = true
     adminUsername = s.username
+    loadVersion()
   }
 
   async function logout() {
@@ -48,7 +60,7 @@
   <Login onsuccess={onLoginSuccess} />
 {:else}
   <div class="flex min-h-screen">
-    <Sidebar active={tab} onselect={(t) => (tab = t)} onlogout={logout} {adminUsername} />
+    <Sidebar active={tab} onselect={(t) => (tab = t)} onlogout={logout} {adminUsername} {buildTime} />
     <main class="flex-1 overflow-y-auto p-8">
       {#key tab}
         <div transition:fade={{ duration: 180 }}>
