@@ -61,9 +61,17 @@ func (s *Store) migrate() error {
 		);
 		INSERT OR IGNORE INTO settings (id, public_addr) VALUES (1, '');
 
+		-- A user IS a subscription: one token, one link, one set of nodes.
+		-- No separate subscription entity — matches how Marzban/Remnawave/
+		-- happ model this (one subscription URL per user), rather than a
+		-- user owning multiple named subscriptions.
 		CREATE TABLE IF NOT EXISTS users (
 			id         TEXT PRIMARY KEY,
 			name       TEXT NOT NULL,
+			token      TEXT NOT NULL UNIQUE,
+			enabled    INTEGER NOT NULL DEFAULT 1,
+			starts_at  TEXT NOT NULL DEFAULT '',
+			expires_at TEXT NOT NULL DEFAULT '',
 			created_at TEXT NOT NULL
 		);
 
@@ -78,30 +86,19 @@ func (s *Store) migrate() error {
 			created_at    TEXT NOT NULL
 		);
 
-		CREATE TABLE IF NOT EXISTS subscriptions (
-			id         TEXT PRIMARY KEY,
-			user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			name       TEXT NOT NULL,
-			token      TEXT NOT NULL UNIQUE,
-			enabled    INTEGER NOT NULL DEFAULT 1,
-			expires_at TEXT NOT NULL DEFAULT '',
-			created_at TEXT NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
-
-		CREATE TABLE IF NOT EXISTS subscription_nodes (
-			subscription_id TEXT NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
-			node_id         TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
-			PRIMARY KEY (subscription_id, node_id)
+		CREATE TABLE IF NOT EXISTS user_nodes (
+			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+			PRIMARY KEY (user_id, node_id)
 		);
 
 		CREATE TABLE IF NOT EXISTS stat_samples (
-			subscription_id TEXT NOT NULL,
-			node_id         TEXT NOT NULL,
-			bucket_hour     TEXT NOT NULL,
-			bytes_up        INTEGER NOT NULL DEFAULT 0,
-			bytes_down      INTEGER NOT NULL DEFAULT 0,
-			PRIMARY KEY (subscription_id, node_id, bucket_hour)
+			user_id     TEXT NOT NULL,
+			node_id     TEXT NOT NULL,
+			bucket_hour TEXT NOT NULL,
+			bytes_up    INTEGER NOT NULL DEFAULT 0,
+			bytes_down  INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (user_id, node_id, bucket_hour)
 		);
 		CREATE INDEX IF NOT EXISTS idx_stat_samples_bucket ON stat_samples(bucket_hour);
 	`)

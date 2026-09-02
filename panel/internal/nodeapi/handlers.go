@@ -53,9 +53,9 @@ func (s *Server) handleHeartbeat(w http.ResponseWriter, r *http.Request, node st
 }
 
 type reportEntry struct {
-	SubscriptionID string `json:"subscription_id"`
-	BytesUp        uint64 `json:"bytes_up"`
-	BytesDown      uint64 `json:"bytes_down"`
+	UserID    string `json:"user_id"`
+	BytesUp   uint64 `json:"bytes_up"`
+	BytesDown uint64 `json:"bytes_down"`
 }
 
 func (s *Server) handleReport(w http.ResponseWriter, r *http.Request, node store.Node) {
@@ -66,11 +66,11 @@ func (s *Server) handleReport(w http.ResponseWriter, r *http.Request, node store
 	}
 
 	for _, e := range entries {
-		if e.SubscriptionID == "" {
+		if e.UserID == "" {
 			continue
 		}
-		if err := s.store.RecordTraffic(e.SubscriptionID, node.ID, e.BytesUp, e.BytesDown); err != nil {
-			slog.Error("nodeapi: record traffic", "node_id", node.ID, "subscription_id", e.SubscriptionID, "error", err)
+		if err := s.store.RecordTraffic(e.UserID, node.ID, e.BytesUp, e.BytesDown); err != nil {
+			slog.Error("nodeapi: record traffic", "node_id", node.ID, "user_id", e.UserID, "error", err)
 		}
 	}
 	w.WriteHeader(http.StatusNoContent)

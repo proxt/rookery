@@ -28,13 +28,21 @@ func TestCreateListGetDeleteUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
-	if u1.ID == u2.ID {
-		t.Fatalf("CreateUser() produced colliding IDs")
+	if u1.ID == u2.ID || u1.Token == u2.Token {
+		t.Fatalf("CreateUser() produced colliding ID/token")
+	}
+	if !u1.Enabled {
+		t.Fatalf("CreateUser() should default to enabled")
 	}
 
 	got, err := s.GetUser(u1.ID)
 	if err != nil || got != u1 {
 		t.Fatalf("GetUser(%q) = %+v, %v; want %+v, nil", u1.ID, got, err, u1)
+	}
+
+	byToken, err := s.GetUserByToken(u1.Token)
+	if err != nil || byToken != u1 {
+		t.Fatalf("GetUserByToken() = %+v, %v; want %+v, nil", byToken, err, u1)
 	}
 
 	list, err := s.ListUsers()
@@ -47,6 +55,26 @@ func TestCreateListGetDeleteUser(t *testing.T) {
 	}
 	if _, err := s.GetUser(u1.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("GetUser() after delete error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestUpdateUser(t *testing.T) {
+	s := openTestStore(t)
+	u, err := s.CreateUser("alice")
+	if err != nil {
+		t.Fatalf("CreateUser() error = %v", err)
+	}
+
+	if err := s.UpdateUser(u.ID, "alice renamed", false, "2026-01-01T00:00:00Z", "2027-01-01T00:00:00Z"); err != nil {
+		t.Fatalf("UpdateUser() error = %v", err)
+	}
+
+	got, err := s.GetUser(u.ID)
+	if err != nil {
+		t.Fatalf("GetUser() error = %v", err)
+	}
+	if got.Name != "alice renamed" || got.Enabled || got.StartsAt != "2026-01-01T00:00:00Z" || got.ExpiresAt != "2027-01-01T00:00:00Z" {
+		t.Fatalf("GetUser() after update = %+v, want updated name/enabled/window", got)
 	}
 }
 
@@ -84,7 +112,7 @@ func TestCreateListDeleteNode(t *testing.T) {
 	}
 }
 
-func TestSubscriptionNodeAssignmentAndLookupByToken(t *testing.T) {
+func TestUserNodeAssignmentAndLookupByToken(t *testing.T) {
 	s := openTestStore(t)
 
 	u, err := s.CreateUser("alice")
@@ -100,41 +128,34 @@ func TestSubscriptionNodeAssignmentAndLookupByToken(t *testing.T) {
 		t.Fatalf("CreateNode() error = %v", err)
 	}
 
-	sub, err := s.CreateSubscription(u.ID, "premium")
-	if err != nil {
-		t.Fatalf("CreateSubscription() error = %v", err)
+	if err := s.SetUserNodes(u.ID, []string{n1.ID, n2.ID}); err != nil {
+		t.Fatalf("SetUserNodes() error = %v", err)
 	}
-	if sub.Token == "" {
-		t.Fatalf("CreateSubscription() returned empty token")
-	}
-
-	if err := s.SetSubscriptionNodes(sub.ID, []string{n1.ID, n2.ID}); err != nil {
-		t.Fatalf("SetSubscriptionNodes() error = %v", err)
-	}
-	nodes, err := s.ListSubscriptionNodes(sub.ID)
+	nodes, err := s.ListUserNodes(u.ID)
 	if err != nil || len(nodes) != 2 {
-		t.Fatalf("ListSubscriptionNodes() = %v, %v; want 2 nodes, nil", nodes, err)
+		t.Fatalf("ListUserNodes() = %v, %v; want 2 nodes, nil", nodes, err)
 	}
 
 	// Replacing the set drops what's no longer included.
-	if err := s.SetSubscriptionNodes(sub.ID, []string{n1.ID}); err != nil {
-		t.Fatalf("SetSubscriptionNodes() error = %v", err)
+	if err := s.SetUserNodes(u.ID, []string{n1.ID}); err != nil {
+		t.Fatalf("SetUserNodes() error = %v", err)
 	}
-	nodes, err = s.ListSubscriptionNodes(sub.ID)
+	nodes, err = s.ListUserNodes(u.ID)
 	if err != nil || len(nodes) != 1 || nodes[0].ID != n1.ID {
-		t.Fatalf("ListSubscriptionNodes() after replace = %v, %v; want just %q", nodes, err, n1.ID)
+		t.Fatalf("ListUserNodes() after replace = %v, %v; want just %q", nodes, err, n1.ID)
 	}
 
-	byToken, err := s.GetSubscriptionByToken(sub.Token)
-	if err != nil || byToken.ID != sub.ID {
-		t.Fatalf("GetSubscriptionByToken() = %+v, %v; want ID %q", byToken, err, sub.ID)
+	byToken, err := s.GetUserByToken(u.Token)
+	if err != nil || byToken.ID != u.ID {
+		t.Fatalf("GetUserByToken() = %+v, %v; want ID %q", byToken, err, u.ID)
 	}
 
-	if err := s.DeleteUser(u.ID); err != nil {
-		t.Fatalf("DeleteUser() error = %v", err)
+	if err := s.DeleteNode(n1.ID); err != nil {
+		t.Fatalf("DeleteNode() error = %v", err)
 	}
-	if _, err := s.GetSubscription(sub.ID); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("GetSubscription() after owning user deleted = %v, want ErrNotFound (cascade)", err)
+	nodes, err = s.ListUserNodes(u.ID)
+	if err != nil || len(nodes) != 0 {
+		t.Fatalf("ListUserNodes() after node deleted = %v, %v; want empty (cascade)", nodes, err)
 	}
 }
 
@@ -149,36 +170,42 @@ func TestRecordTrafficAndTotals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateNode() error = %v", err)
 	}
-	sub, err := s.CreateSubscription(u.ID, "premium")
-	if err != nil {
-		t.Fatalf("CreateSubscription() error = %v", err)
-	}
 
-	if err := s.RecordTraffic(sub.ID, n.ID, 100, 200); err != nil {
+	if err := s.RecordTraffic(u.ID, n.ID, 100, 200); err != nil {
 		t.Fatalf("RecordTraffic() error = %v", err)
 	}
-	if err := s.RecordTraffic(sub.ID, n.ID, 50, 25); err != nil {
+	if err := s.RecordTraffic(u.ID, n.ID, 50, 25); err != nil {
 		t.Fatalf("RecordTraffic() error = %v", err)
-	}
-
-	subTotals, err := s.TotalsForSubscription(sub.ID)
-	if err != nil || subTotals.BytesUp != 150 || subTotals.BytesDown != 225 {
-		t.Fatalf("TotalsForSubscription() = %+v, %v; want {150 225}, nil", subTotals, err)
 	}
 
 	userTotals, err := s.TotalsForUser(u.ID)
-	if err != nil || userTotals != subTotals {
-		t.Fatalf("TotalsForUser() = %+v, %v; want %+v, nil", userTotals, err, subTotals)
+	if err != nil || userTotals.BytesUp != 150 || userTotals.BytesDown != 225 {
+		t.Fatalf("TotalsForUser() = %+v, %v; want {150 225}, nil", userTotals, err)
 	}
 
 	nodeTotals, err := s.TotalsForNode(n.ID)
-	if err != nil || nodeTotals != subTotals {
-		t.Fatalf("TotalsForNode() = %+v, %v; want %+v, nil", nodeTotals, err, subTotals)
+	if err != nil || nodeTotals != userTotals {
+		t.Fatalf("TotalsForNode() = %+v, %v; want %+v, nil", nodeTotals, err, userTotals)
 	}
 
 	global, err := s.GlobalTotals()
-	if err != nil || global != subTotals {
-		t.Fatalf("GlobalTotals() = %+v, %v; want %+v, nil", global, err, subTotals)
+	if err != nil || global != userTotals {
+		t.Fatalf("GlobalTotals() = %+v, %v; want %+v, nil", global, err, userTotals)
+	}
+
+	series, err := s.GlobalTimeSeries(24)
+	if err != nil {
+		t.Fatalf("GlobalTimeSeries() error = %v", err)
+	}
+	if len(series) == 0 {
+		t.Fatalf("GlobalTimeSeries() returned no points")
+	}
+	var seriesUp uint64
+	for _, p := range series {
+		seriesUp += p.BytesUp
+	}
+	if seriesUp != userTotals.BytesUp {
+		t.Fatalf("GlobalTimeSeries() sums to %d up, want %d", seriesUp, userTotals.BytesUp)
 	}
 }
 

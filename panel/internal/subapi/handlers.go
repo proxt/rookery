@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/rookery/panel/internal/store"
@@ -44,25 +45,29 @@ type subOut struct {
 }
 
 func (s *Server) handleSub(w http.ResponseWriter, r *http.Request) {
-	sub, err := s.store.GetSubscriptionByToken(r.PathValue("token"))
-	if err != nil || !sub.Enabled || subscriptionExpired(sub) {
+	u, err := s.store.GetUserByToken(r.PathValue("token"))
+	if err != nil || !u.Enabled || !withinWindow(u) {
+		if wantsHTML(r) {
+			renderSubPage(w, subPageData{Found: false})
+			return
+		}
 		http.NotFound(w, r)
 		return
 	}
 
-	nodes, err := s.store.ListSubscriptionNodes(sub.ID)
+	nodes, err := s.store.ListUserNodes(u.ID)
 	if err != nil {
-		slog.Error("subapi: list subscription nodes", "subscription_id", sub.ID, "error", err)
+		slog.Error("subapi: list user nodes", "user_id", u.ID, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	out := subOut{Name: sub.Name, Nodes: make([]nodeOut, 0, len(nodes))}
+	out := subOut{Name: u.Name, Nodes: make([]nodeOut, 0, len(nodes))}
 	for _, n := range nodes {
 		claims := signaling.Claims{
-			SubscriptionID: sub.ID,
-			NodeID:         n.ID,
-			Expiry:         time.Now().Add(s.tokenTTL).Unix(),
+			UserID: u.ID,
+			NodeID: n.ID,
+			Expiry: time.Now().Add(s.tokenTTL).Unix(),
 		}
 		token, err := signaling.IssueToken([]byte(n.APIKey), claims)
 		if err != nil {
@@ -73,17 +78,37 @@ func (s *Server) handleSub(w http.ResponseWriter, r *http.Request) {
 		out.Nodes = append(out.Nodes, nodeOut{ID: n.ID, Name: n.Name, Tags: n.Tags, Address: n.Address, SessionToken: token})
 	}
 
+	if wantsHTML(r) {
+		renderSubPage(w, subPageData{
+			Found: true, Name: u.Name, ExpiresAt: u.ExpiresAt, NodeCount: len(out.Nodes), SubURL: r.URL.String(),
+		})
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
 }
 
-func subscriptionExpired(sub store.Subscription) bool {
-	if sub.ExpiresAt == "" {
-		return false
+// wantsHTML reports whether r looks like a human opening the link in a
+// browser (no Accept: application/json) rather than the client app fetching
+// it programmatically — the app always sets that header explicitly.
+func wantsHTML(r *http.Request) bool {
+	return !strings.Contains(r.Header.Get("Accept"), "application/json")
+}
+
+func withinWindow(u store.User) bool {
+	now := time.Now()
+	if u.StartsAt != "" {
+		starts, err := time.Parse(time.RFC3339Nano, u.StartsAt)
+		if err == nil && now.Before(starts) {
+			return false
+		}
 	}
-	exp, err := time.Parse(time.RFC3339Nano, sub.ExpiresAt)
-	if err != nil {
-		return false
+	if u.ExpiresAt != "" {
+		expires, err := time.Parse(time.RFC3339Nano, u.ExpiresAt)
+		if err == nil && now.After(expires) {
+			return false
+		}
 	}
-	return time.Now().After(exp)
+	return true
 }

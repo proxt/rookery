@@ -1,5 +1,5 @@
-// Package admin implements the panel's web admin panel: login, user and
-// subscription management, node registration, and traffic statistics.
+// Package admin implements the panel's web admin panel: login, user
+// (subscription) management, node registration, and traffic statistics.
 package admin
 
 import (
@@ -40,13 +40,10 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /admin/api/users", s.requireAuth(s.handleListUsers))
 	mux.HandleFunc("POST /admin/api/users", s.requireAuth(s.handleCreateUser))
+	mux.HandleFunc("GET /admin/api/users/{id}", s.requireAuth(s.handleGetUser))
+	mux.HandleFunc("PUT /admin/api/users/{id}", s.requireAuth(s.handleUpdateUser))
 	mux.HandleFunc("DELETE /admin/api/users/{id}", s.requireAuth(s.handleDeleteUser))
-
-	mux.HandleFunc("GET /admin/api/subscriptions", s.requireAuth(s.handleListSubscriptions))
-	mux.HandleFunc("POST /admin/api/subscriptions", s.requireAuth(s.handleCreateSubscription))
-	mux.HandleFunc("PUT /admin/api/subscriptions/{id}", s.requireAuth(s.handleUpdateSubscription))
-	mux.HandleFunc("DELETE /admin/api/subscriptions/{id}", s.requireAuth(s.handleDeleteSubscription))
-	mux.HandleFunc("PUT /admin/api/subscriptions/{id}/nodes", s.requireAuth(s.handleSetSubscriptionNodes))
+	mux.HandleFunc("PUT /admin/api/users/{id}/nodes", s.requireAuth(s.handleSetUserNodes))
 
 	mux.HandleFunc("GET /admin/api/nodes", s.requireAuth(s.handleListNodes))
 	mux.HandleFunc("POST /admin/api/nodes", s.requireAuth(s.handleCreateNode))
@@ -54,7 +51,9 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /admin/api/nodes/{id}", s.requireAuth(s.handleDeleteNode))
 
 	mux.HandleFunc("GET /admin/api/stats/overview", s.requireAuth(s.handleStatsOverview))
+	mux.HandleFunc("GET /admin/api/stats/timeseries", s.requireAuth(s.handleStatsTimeSeries))
 	mux.HandleFunc("GET /admin/api/stats/users/{id}", s.requireAuth(s.handleStatsUser))
+	mux.HandleFunc("GET /admin/api/stats/users/{id}/series", s.requireAuth(s.handleStatsUserSeries))
 	mux.HandleFunc("GET /admin/api/stats/nodes/{id}", s.requireAuth(s.handleStatsNode))
 
 	uiSub, err := fs.Sub(uiFS, "ui")

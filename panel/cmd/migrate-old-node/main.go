@@ -1,9 +1,9 @@
 // Command migrate-old-node is a one-off tool: it reads users out of an old
 // single-node rookeryd's SQLite database (id, name, secret — the pre-panel
-// schema) and recreates each as a panel user with one subscription, assigned
-// to a given node. The old per-user secret has no equivalent in the new
-// token-based auth model, so every migrated user needs the newly printed
-// sub_url — their old rookery:// link stops working.
+// schema) and recreates each as a panel user, assigned to a given node. The
+// old per-user secret has no equivalent in the new token-based auth model,
+// so every migrated user needs the newly printed sub_url — their old
+// rookery:// link stops working.
 package main
 
 import (
@@ -60,16 +60,11 @@ func run() error {
 			fmt.Printf("[%s] FAILED to create user: %v\n", u.Name, err)
 			continue
 		}
-		sub, err := c.createSubscription(newUser.ID, u.Name)
-		if err != nil {
-			fmt.Printf("[%s] FAILED to create subscription: %v\n", u.Name, err)
-			continue
-		}
-		if err := c.setSubscriptionNodes(sub.ID, []string{*nodeID}); err != nil {
+		if err := c.setUserNodes(newUser.ID, []string{*nodeID}); err != nil {
 			fmt.Printf("[%s] FAILED to assign node: %v\n", u.Name, err)
 			continue
 		}
-		fmt.Printf("[%s] migrated -> %s\n", u.Name, sub.SubURL)
+		fmt.Printf("[%s] migrated -> %s\n", u.Name, newUser.SubURL)
 	}
 
 	fmt.Println("\nSend each printed sub_url to the corresponding user — their old rookery:// link no longer works.")
@@ -130,7 +125,8 @@ func newPanelClient(baseAddr, username, password string) (*panelClient, error) {
 }
 
 type panelUser struct {
-	ID string `json:"id"`
+	ID     string `json:"id"`
+	SubURL string `json:"sub_url"`
 }
 
 func (c *panelClient) createUser(name string) (panelUser, error) {
@@ -139,20 +135,9 @@ func (c *panelClient) createUser(name string) (panelUser, error) {
 	return u, err
 }
 
-type panelSubscription struct {
-	ID     string `json:"id"`
-	SubURL string `json:"sub_url"`
-}
-
-func (c *panelClient) createSubscription(userID, name string) (panelSubscription, error) {
-	var s panelSubscription
-	err := c.postJSON("/admin/api/subscriptions", map[string]string{"user_id": userID, "name": name}, &s)
-	return s, err
-}
-
-func (c *panelClient) setSubscriptionNodes(subID string, nodeIDs []string) error {
+func (c *panelClient) setUserNodes(userID string, nodeIDs []string) error {
 	body, _ := json.Marshal(map[string][]string{"node_ids": nodeIDs})
-	req, err := http.NewRequest(http.MethodPut, c.baseAddr+"/admin/api/subscriptions/"+subID+"/nodes", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPut, c.baseAddr+"/admin/api/users/"+userID+"/nodes", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
