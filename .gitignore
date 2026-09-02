@@ -5,7 +5,7 @@
 !client/gui/wintun/wintun.dll
 
 # Real configs (examples are tracked, real ones are not)
-node/configs/node.yaml
+panel/configs/panel.yaml
 client/configs/client.yaml
 
 # Wails / frontend — build/bin and build/windows/tasklist.json are real
