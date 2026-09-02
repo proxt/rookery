@@ -6,6 +6,8 @@
   import Dashboard from './lib/views/Dashboard.svelte'
   import Users from './lib/views/Users.svelte'
   import Nodes from './lib/views/Nodes.svelte'
+  import Releases from './lib/views/Releases.svelte'
+  import Admins from './lib/views/Admins.svelte'
   import Settings from './lib/views/Settings.svelte'
 
   let authed = $state(null) // null = checking, false = login, true = app
@@ -14,10 +16,9 @@
 
   async function checkAuth() {
     try {
-      await api.session()
+      const s = await api.session()
       authed = true
-      const s = await api.getSettings()
-      adminUsername = s.admin_username
+      adminUsername = s.username
     } catch {
       authed = false
     }
@@ -25,9 +26,9 @@
   checkAuth()
 
   async function onLoginSuccess() {
+    const s = await api.session()
     authed = true
-    const s = await api.getSettings()
-    adminUsername = s.admin_username
+    adminUsername = s.username
   }
 
   async function logout() {
@@ -35,7 +36,7 @@
     authed = false
   }
 
-  const views = { dashboard: Dashboard, users: Users, nodes: Nodes, settings: Settings }
+  const views = { dashboard: Dashboard, users: Users, nodes: Nodes, releases: Releases, admins: Admins, settings: Settings }
   const CurrentView = $derived(views[tab])
 </script>
 

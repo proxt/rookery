@@ -6,6 +6,8 @@
     { id: 'dashboard', label: 'Обзор', icon: 'M4 11.5 12 4l8 7.5M6 10v9h12v-9' },
     { id: 'users', label: 'Пользователи', icon: 'M12 8a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4ZM5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4' },
     { id: 'nodes', label: 'Ноды', icon: 'M4 6h16M4 12h16M4 18h16' },
+    { id: 'releases', label: 'Обновления', icon: 'M12 3v12m0 0-4-4m4 4 4-4M4 21h16' },
+    { id: 'admins', label: 'Админы', icon: 'M12 3l7 3v6c0 4-3 7-7 8-4-1-7-4-7-8V6l7-3Z' },
     { id: 'settings', label: 'Настройки', icon: 'circle' },
   ]
 </script>

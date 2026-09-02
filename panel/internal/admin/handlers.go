@@ -1,5 +1,6 @@
 // Package admin implements the panel's web admin panel: login, user
-// (subscription) management, node registration, and traffic statistics.
+// (subscription) management, node registration, traffic statistics, admin
+// account management, and client release hosting.
 package admin
 
 import (
@@ -20,13 +21,15 @@ const sessionCookieName = "rookery_admin_session"
 
 // Server implements the admin panel's HTTP handlers.
 type Server struct {
-	store    *store.Store
-	sessions *sessionStore
+	store       *store.Store
+	sessions    *sessionStore
+	releasesDir string
 }
 
-// NewServer builds an admin Server backed by st.
-func NewServer(st *store.Store) *Server {
-	return &Server{store: st, sessions: newSessionStore()}
+// NewServer builds an admin Server backed by st. Uploaded client releases
+// are saved under releasesDir.
+func NewServer(st *store.Store, releasesDir string) *Server {
+	return &Server{store: st, sessions: newSessionStore(), releasesDir: releasesDir}
 }
 
 // RegisterRoutes wires the admin panel's routes (API and static UI) onto mux.
@@ -36,7 +39,11 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/api/session", s.requireAuth(s.handleSessionCheck))
 	mux.HandleFunc("GET /admin/api/settings", s.requireAuth(s.handleGetSettings))
 	mux.HandleFunc("PUT /admin/api/settings", s.requireAuth(s.handleUpdateSettings))
-	mux.HandleFunc("PUT /admin/api/credentials", s.requireAuth(s.handleUpdateCredentials))
+	mux.HandleFunc("PUT /admin/api/account/password", s.requireAuth(s.handleChangeOwnPassword))
+
+	mux.HandleFunc("GET /admin/api/admins", s.requireAuth(s.handleListAdmins))
+	mux.HandleFunc("POST /admin/api/admins", s.requireAuth(s.handleCreateAdmin))
+	mux.HandleFunc("DELETE /admin/api/admins/{id}", s.requireAuth(s.handleDeleteAdmin))
 
 	mux.HandleFunc("GET /admin/api/users", s.requireAuth(s.handleListUsers))
 	mux.HandleFunc("POST /admin/api/users", s.requireAuth(s.handleCreateUser))
@@ -56,6 +63,10 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /admin/api/stats/users/{id}/series", s.requireAuth(s.handleStatsUserSeries))
 	mux.HandleFunc("GET /admin/api/stats/nodes/{id}", s.requireAuth(s.handleStatsNode))
 
+	mux.HandleFunc("GET /admin/api/releases", s.requireAuth(s.handleListReleases))
+	mux.HandleFunc("POST /admin/api/releases", s.requireAuth(s.handleUploadRelease))
+	mux.HandleFunc("DELETE /admin/api/releases/{id}", s.requireAuth(s.handleDeleteRelease))
+
 	uiSub, err := fs.Sub(uiFS, "frontend/dist")
 	if err != nil {
 		panic(err) // embedded at build time; cannot fail at runtime
@@ -69,11 +80,16 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(sessionCookieName)
-		if err != nil || !s.sessions.valid(cookie.Value) {
+		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		next(w, r)
+		adminID, ok := s.sessions.get(cookie.Value)
+		if !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r.WithContext(withAdminID(r.Context(), adminID)))
 	}
 }
 
@@ -87,13 +103,14 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !s.store.VerifyAdmin(req.Username, req.Password) {
+	adminID, ok := s.store.VerifyAdmin(req.Username, req.Password)
+	if !ok {
 		time.Sleep(300 * time.Millisecond) // slow down credential guessing
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
-	token, err := s.sessions.create()
+	token, err := s.sessions.create(adminID)
 	if err != nil {
 		slog.Error("admin: create session", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
@@ -120,7 +137,12 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSessionCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
+	a, err := s.store.GetAdmin(adminIDFrom(r.Context()))
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	writeJSON(w, map[string]string{"id": a.ID, "username": a.Username})
 }
 
 func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
@@ -130,13 +152,7 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	username, err := s.store.AdminUsername()
-	if err != nil {
-		slog.Error("admin: get admin username", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, map[string]string{"public_addr": publicAddr, "admin_username": username})
+	writeJSON(w, map[string]string{"public_addr": publicAddr})
 }
 
 func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
@@ -155,30 +171,28 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) handleUpdateCredentials(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		CurrentPassword string `json:"current_password"`
-		NewUsername     string `json:"new_username"`
 		NewPassword     string `json:"new_password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.NewPassword == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	currentUsername, err := s.store.AdminUsername()
+	a, err := s.store.GetAdmin(adminIDFrom(r.Context()))
 	if err != nil {
-		slog.Error("admin: get admin username", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	if !s.store.VerifyAdmin(currentUsername, req.CurrentPassword) {
+	if _, ok := s.store.VerifyAdmin(a.Username, req.CurrentPassword); !ok {
 		http.Error(w, "current password is incorrect", http.StatusForbidden)
 		return
 	}
 
-	if err := s.store.UpdateAdmin(req.NewUsername, req.NewPassword); err != nil {
-		slog.Error("admin: update credentials", "error", err)
+	if err := s.store.UpdateAdminPassword(a.ID, req.NewPassword); err != nil {
+		slog.Error("admin: update own password", "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

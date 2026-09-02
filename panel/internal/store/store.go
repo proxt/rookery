@@ -49,10 +49,12 @@ func (s *Store) Close() error {
 
 func (s *Store) migrate() error {
 	_, err := s.db.Exec(`
-		CREATE TABLE IF NOT EXISTS admin (
-			id            INTEGER PRIMARY KEY CHECK (id = 1),
-			username      TEXT NOT NULL,
-			password_hash TEXT NOT NULL
+		-- Multiple admins can log in independently — no more singleton row.
+		CREATE TABLE IF NOT EXISTS admins (
+			id            TEXT PRIMARY KEY,
+			username      TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			created_at    TEXT NOT NULL
 		);
 
 		CREATE TABLE IF NOT EXISTS settings (
@@ -101,6 +103,16 @@ func (s *Store) migrate() error {
 			PRIMARY KEY (user_id, node_id, bucket_hour)
 		);
 		CREATE INDEX IF NOT EXISTS idx_stat_samples_bucket ON stat_samples(bucket_hour);
+
+		CREATE TABLE IF NOT EXISTS releases (
+			id         TEXT PRIMARY KEY,
+			version    TEXT NOT NULL,
+			notes      TEXT NOT NULL DEFAULT '',
+			filename   TEXT NOT NULL,
+			file_path  TEXT NOT NULL,
+			size       INTEGER NOT NULL,
+			created_at TEXT NOT NULL
+		);
 	`)
 	if err != nil {
 		return fmt.Errorf("store: migrate: %w", err)

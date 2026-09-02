@@ -54,6 +54,7 @@ func run() error {
 	srv := server.New(server.Config{
 		ListenAddr:      cfg.ListenAddr,
 		SessionTokenTTL: time.Duration(cfg.SessionTokenTTLMin) * time.Minute,
+		ReleasesDir:     filepath.Join(cfg.DataDir, "releases"),
 	}, st)
 
 	slog.Info("rookeryp starting", "listen_addr", cfg.ListenAddr)
@@ -74,9 +75,8 @@ func initAdmin(st *store.Store) error {
 		return err
 	}
 	if password != "" {
-		username, _ := st.AdminUsername()
 		slog.Warn("generated admin panel credentials — save these, they will not be shown again",
-			"username", username, "password", password)
+			"username", "admin", "password", password)
 	}
 	return nil
 }

@@ -5,11 +5,15 @@ import {engine} from '../models';
 
 export function AddSubscriptionFromLink(arg1:string):Promise<main.Subscription>;
 
+export function CheckForUpdate():Promise<main.UpdateInfo>;
+
 export function Connect():Promise<void>;
 
 export function DeleteSubscription(arg1:string):Promise<void>;
 
 export function Disconnect():Promise<void>;
+
+export function DownloadAndInstallUpdate(arg1:string):Promise<void>;
 
 export function GetAppSettings():Promise<main.AppSettings>;
 

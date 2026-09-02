@@ -6,6 +6,10 @@ export function AddSubscriptionFromLink(arg1) {
   return window['go']['main']['App']['AddSubscriptionFromLink'](arg1);
 }
 
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function Connect() {
   return window['go']['main']['App']['Connect']();
 }
@@ -16,6 +20,10 @@ export function DeleteSubscription(arg1) {
 
 export function Disconnect() {
   return window['go']['main']['App']['Disconnect']();
+}
+
+export function DownloadAndInstallUpdate(arg1) {
+  return window['go']['main']['App']['DownloadAndInstallUpdate'](arg1);
 }
 
 export function GetAppSettings() {

@@ -34,12 +34,34 @@ export const api = {
 
   getSettings: () => request('GET', '/admin/api/settings'),
   updateSettings: (publicAddr) => request('PUT', '/admin/api/settings', { public_addr: publicAddr }),
-  updateCredentials: (currentPassword, newUsername, newPassword) =>
-    request('PUT', '/admin/api/credentials', {
-      current_password: currentPassword,
-      new_username: newUsername,
-      new_password: newPassword,
-    }),
+  changeOwnPassword: (currentPassword, newPassword) =>
+    request('PUT', '/admin/api/account/password', { current_password: currentPassword, new_password: newPassword }),
+
+  listAdmins: () => request('GET', '/admin/api/admins'),
+  createAdmin: (username, password) => request('POST', '/admin/api/admins', { username, password }),
+  deleteAdmin: (id) => request('DELETE', `/admin/api/admins/${id}`),
+
+  listReleases: () => request('GET', '/admin/api/releases'),
+  deleteRelease: (id) => request('DELETE', `/admin/api/releases/${id}`),
+  async uploadRelease(version, notes, file, onProgress) {
+    const form = new FormData()
+    form.append('version', version)
+    form.append('notes', notes)
+    form.append('file', file)
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', '/admin/api/releases')
+      xhr.upload.onprogress = (e) => {
+        if (onProgress && e.lengthComputable) onProgress(e.loaded / e.total)
+      }
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText))
+        else reject(new ApiError(xhr.status, xhr.responseText))
+      }
+      xhr.onerror = () => reject(new ApiError(0, 'network error'))
+      xhr.send(form)
+    })
+  },
 
   listUsers: () => request('GET', '/admin/api/users'),
   getUser: (id) => request('GET', `/admin/api/users/${id}`),

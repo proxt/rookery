@@ -11,6 +11,7 @@ import (
 
 	"github.com/rookery/panel/internal/admin"
 	"github.com/rookery/panel/internal/nodeapi"
+	"github.com/rookery/panel/internal/releaseapi"
 	"github.com/rookery/panel/internal/store"
 	"github.com/rookery/panel/internal/subapi"
 )
@@ -19,6 +20,8 @@ import (
 type Config struct {
 	ListenAddr      string
 	SessionTokenTTL time.Duration
+	// ReleasesDir is where uploaded client builds are saved.
+	ReleasesDir string
 }
 
 // Server is the panel's HTTP server.
@@ -29,9 +32,10 @@ type Server struct {
 // New builds a Server backed by st.
 func New(cfg Config, st *store.Store) *Server {
 	mux := http.NewServeMux()
-	admin.NewServer(st).RegisterRoutes(mux)
+	admin.NewServer(st, cfg.ReleasesDir).RegisterRoutes(mux)
 	nodeapi.NewServer(st).RegisterRoutes(mux)
 	subapi.NewServer(st, cfg.SessionTokenTTL).RegisterRoutes(mux)
+	releaseapi.NewServer(st).RegisterRoutes(mux)
 
 	return &Server{httpSrv: &http.Server{Addr: cfg.ListenAddr, Handler: mux}}
 }
