@@ -32,6 +32,8 @@ Unicode true
 ####
 ## Include the wails tools
 ####
+!define INFO_PRODUCTNAME "Rookery" # Capitalized — Wails would otherwise take
+                                    # this from wails.json's lowercase "name".
 !include "wails_tools.nsh"
 
 # The version information for this two must consist of 4 parts
@@ -64,7 +66,7 @@ ManifestDPIAware true
 
 !insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
 
-!insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "Russian" # Set the Language of the installer
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
@@ -89,6 +91,12 @@ FunctionEnd
 
 Section
     !insertmacro wails.setShellContext
+
+    ; A running instance keeps rookery.exe locked, which otherwise fails
+    ; the install/upgrade with "Error opening file for writing" — close it
+    ; first. Harmless no-op if nothing is running.
+    nsExec::Exec 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
+    Sleep 500
 
     !insertmacro wails.webview2runtime
 
@@ -120,6 +128,9 @@ SectionEnd
 
 Section "uninstall"
     !insertmacro wails.setShellContext
+
+    nsExec::Exec 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
+    Sleep 500
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
