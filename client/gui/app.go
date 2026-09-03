@@ -142,6 +142,13 @@ func (a *App) Disconnect() {
 	a.eng.Stop()
 }
 
+// GetAppVersion returns this build's version (see version.go), for the
+// About page — kept as a real accessor rather than letting the frontend
+// hardcode its own copy that drifts from the actual build.
+func (a *App) GetAppVersion() string {
+	return AppVersion
+}
+
 // GetStatus returns a point-in-time snapshot; the frontend also receives
 // live updates via the "tunnel:event" event.
 func (a *App) GetStatus() engine.StatusSnapshot {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/rookery/panel/internal/admin"
+	"github.com/rookery/panel/internal/docsapi"
 	"github.com/rookery/panel/internal/nodeapi"
 	"github.com/rookery/panel/internal/releaseapi"
 	"github.com/rookery/panel/internal/store"
@@ -26,6 +27,26 @@ const auditLogRetention = 90 * 24 * time.Hour
 // auditLogPruneInterval is how often the retention sweep runs. Coarse on
 // purpose — this is housekeeping, not a hot path.
 const auditLogPruneInterval = 24 * time.Hour
+
+// watchtowerUpdateURL/-Token address the panel's own Watchtower sidecar,
+// which the deploy compose file (panel/deploy/docker-compose.yml) runs in
+// --http-api-update mode instead of on its own timer — this way the panel's
+// "auto-update" admin setting is a real on/off switch (see
+// triggerAutoUpdatePeriodically) rather than something only Watchtower's own
+// fixed interval controls. The URL is only reachable from other containers
+// on the compose project's private network (Watchtower's port is never
+// published to the host), so a fixed token is fine here — the real security
+// boundary is the network, not the token.
+const (
+	watchtowerUpdateURL   = "http://watchtower:8080/v1/update"
+	watchtowerUpdateToken = "rookery-internal"
+)
+
+// autoUpdateCheckInterval is how often the panel asks its own Watchtower
+// whether a new image is available (when the auto-update setting is on).
+// Matches Watchtower's traditional --interval default so behavior is
+// unchanged for anyone who never touches the new toggle.
+const autoUpdateCheckInterval = 5 * time.Minute
 
 // Config controls the HTTP server.
 type Config struct {
@@ -48,6 +69,7 @@ func New(cfg Config, st *store.Store) *Server {
 	nodeapi.NewServer(st).RegisterRoutes(mux)
 	subapi.NewServer(st, cfg.SessionTokenTTL).RegisterRoutes(mux)
 	releaseapi.NewServer(st).RegisterRoutes(mux)
+	docsapi.RegisterRoutes(mux)
 
 	return &Server{httpSrv: &http.Server{Addr: cfg.ListenAddr, Handler: mux}, store: st}
 }
@@ -56,6 +78,7 @@ func New(cfg Config, st *store.Store) *Server {
 // point it shuts the server down gracefully.
 func (s *Server) Serve(ctx context.Context) error {
 	go s.pruneAuditLogPeriodically(ctx)
+	go s.triggerAutoUpdatePeriodically(ctx)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -75,6 +98,55 @@ func (s *Server) Serve(ctx context.Context) error {
 			return fmt.Errorf("server: shutdown: %w", err)
 		}
 		return nil
+	}
+}
+
+// triggerAutoUpdatePeriodically asks the panel's own Watchtower to check for
+// (and apply) an update, on autoUpdateCheckInterval, but only while the
+// auto_update_enabled setting is on — checked fresh every tick, so toggling
+// it off in the admin UI takes effect within one interval, no restart
+// needed. A failed request (e.g. Watchtower still starting up) is logged
+// and retried next tick, not treated as fatal.
+func (s *Server) triggerAutoUpdatePeriodically(ctx context.Context) {
+	ticker := time.NewTicker(autoUpdateCheckInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.triggerAutoUpdateIfEnabled(ctx)
+		}
+	}
+}
+
+func (s *Server) triggerAutoUpdateIfEnabled(ctx context.Context) {
+	enabled, err := s.store.AutoUpdateEnabled()
+	if err != nil {
+		slog.Error("server: get auto_update_enabled", "error", err)
+		return
+	}
+	if !enabled {
+		return
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, watchtowerUpdateURL, nil)
+	if err != nil {
+		slog.Error("server: build watchtower update request", "error", err)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+watchtowerUpdateToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		slog.Error("server: trigger watchtower update", "error", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		slog.Error("server: watchtower update request failed", "status", resp.StatusCode)
 	}
 }
 

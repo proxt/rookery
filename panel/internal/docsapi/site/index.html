@@ -659,17 +659,25 @@ volumes:
 
       <section id="panel-autoupdate">
         <h2><span class="num">05</span> Автообновление<a class="anchor-link" href="#panel-autoupdate">#</a></h2>
-        <p class="section-desc">Compose-файл уже содержит <a class="mono" href="https://containrrr.dev/watchtower/" target="_blank" rel="noopener">watchtower</a> — он раз в 5 минут проверяет ghcr.io и сам перезапускает контейнер на новом образе. Ручной <code class="inline">docker compose pull &amp;&amp; up -d</code> после пуша в master не нужен ни панели, ни ноде.</p>
+        <p class="section-desc">Compose-файл уже содержит <a class="mono" href="https://containrrr.dev/watchtower/" target="_blank" rel="noopener">watchtower</a>. У панели он работает в режиме on-demand (<code class="inline">--http-api-update</code>, без собственного таймера) — саму проверку раз в 5 минут инициирует <em>панель</em>, обращаясь к watchtower по внутренней docker-сети. У ноды watchtower по-прежнему опрашивает ghcr.io сам, по таймеру.</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
             <tbody>
-              <tr><td><code class="inline">--interval</code></td><td>300 секунд</td></tr>
+              <tr><td>Интервал проверки (панель)</td><td>каждые 5 минут, инициирует панель</td></tr>
+              <tr><td>Интервал проверки (нода)</td><td>каждые 5 минут, <code class="inline">--interval 300</code> у watchtower</td></tr>
               <tr><td><code class="inline">--cleanup</code></td><td>удаляет старый образ после обновления</td></tr>
               <tr><td>Простой при обновлении</td><td>несколько секунд на перезапуск контейнера</td></tr>
             </tbody>
           </table>
         </div>
+
+        <h3>Выключатель автообновления</h3>
+        <p>Вкладка «Настройки» в админке — тумблер «Автоматическое обновление». Выключение не трогает уже
+        запущенный процесс, только останавливает будущие проверки (панель просто перестаёт дёргать watchtower —
+        сам watchtower при этом продолжает существовать, но без обращений с его API ничего не происходит).
+        Эта же документация — часть панели (см. ниже), поэтому обновляется вместе с ней и тоже подчиняется
+        этому переключателю.</p>
 
         <h3>Как проверить, что обновление реально применилось</h3>
         <p>Внизу боковой панели администратора — под именем текущего админа — есть строка
@@ -1094,7 +1102,9 @@ sudo systemctl enable --now rookery-node</code></pre>
 
         <h3>Для панели</h3>
         <p>Если панель на своём поддомене — так же просто, один <code class="inline">reverse_proxy</code>.
-        Если панель и нода делят один домен, маршрутизируйте по пути — панель занимает только эти четыре префикса:</p>
+        Если панель и нода делят один домен, маршрутизируйте по пути — панель занимает только эти пять префиксов
+        (документация на <code class="inline">/docs</code> тоже отдаётся панелью — она встроена в бинарь, отдельного
+        каталога на диске под неё больше нет):</p>
         <div class="code-block">
           <div class="code-head"><span>Caddyfile</span><button class="copy-btn" data-copy>Копировать</button></div>
           <pre><code>example.com {
@@ -1111,6 +1121,9 @@ sudo systemctl enable --now rookery-node</code></pre>
 		reverse_proxy 127.0.0.1:8090
 	}
 	handle /releases/* {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle /docs* {
 		reverse_proxy 127.0.0.1:8090
 	}
 	handle {

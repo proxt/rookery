@@ -34,7 +34,8 @@ export const api = {
   version: () => request('GET', '/admin/api/version'),
 
   getSettings: () => request('GET', '/admin/api/settings'),
-  updateSettings: (publicAddr) => request('PUT', '/admin/api/settings', { public_addr: publicAddr }),
+  updateSettings: (publicAddr, autoUpdateEnabled) =>
+    request('PUT', '/admin/api/settings', { public_addr: publicAddr, auto_update_enabled: autoUpdateEnabled }),
   changeOwnPassword: (currentPassword, newPassword) =>
     request('PUT', '/admin/api/account/password', { current_password: currentPassword, new_password: newPassword }),
 

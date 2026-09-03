@@ -8,11 +8,17 @@
 # Unlike the node, the panel does plain HTTP (no WebRTC/ICE), so it doesn't
 # need host networking — a normal published port is fine.
 #
-# watchtower polls ghcr.io every 5 minutes and restarts rookery-panel on a
-# new :latest — no manual `docker compose pull && up -d` after a push.
-# Restarting briefly drops the panel (a few seconds); active client
-# sessions on the node are unaffected, since the node doesn't depend on the
-# panel being reachable to keep relaying already-issued tokens.
+# watchtower checks ghcr.io and restarts rookery-panel on a new :latest —
+# no manual `docker compose pull && up -d` after a push. Restarting briefly
+# drops the panel (a few seconds); active client sessions on the node are
+# unaffected, since the node doesn't depend on the panel being reachable to
+# keep relaying already-issued tokens.
+#
+# watchtower here runs in --http-api-update mode (no --interval of its own)
+# — the panel itself polls it every 5 minutes over the compose network and
+# decides whether to trigger an update, gated by the "auto-update" toggle in
+# Settings, so turning that off in the admin UI is a real switch rather than
+# something only watchtower's own timer controls.
 services:
   rookery-panel:
     image: ghcr.io/proxt/rookery-panel:latest
@@ -44,9 +50,14 @@ services:
       # otherwise see the other as a stale copy of itself and kill it.
       # --scope keeps this instance to its own labeled container.
       - WATCHTOWER_SCOPE=rookery-panel
+      # On-demand only (no --interval below) — the panel triggers checks
+      # itself. The token only matters within this compose network (this
+      # port is never published to the host), so a fixed value is fine.
+      - WATCHTOWER_HTTP_API_UPDATE=true
+      - WATCHTOWER_HTTP_API_TOKEN=rookery-internal
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup rookery-panel
+    command: --cleanup rookery-panel
 
 volumes:
   rookery_panel_data:

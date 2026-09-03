@@ -28,3 +28,28 @@ func (s *Store) SetPublicAddr(addr string) error {
 	}
 	return nil
 }
+
+// AutoUpdateEnabled reports whether the panel should trigger Watchtower's
+// on-demand update check on its own periodic sweep (see
+// server.triggerAutoUpdatePeriodically). Defaults to true so existing
+// deployments keep updating automatically unless an admin turns it off.
+func (s *Store) AutoUpdateEnabled() (bool, error) {
+	var enabled bool
+	err := s.db.QueryRow(`SELECT auto_update_enabled FROM settings WHERE id = 1`).Scan(&enabled)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("store: get auto_update_enabled: %w", err)
+	}
+	return enabled, nil
+}
+
+// SetAutoUpdateEnabled updates whether the panel triggers automatic updates.
+func (s *Store) SetAutoUpdateEnabled(enabled bool) error {
+	_, err := s.db.Exec(`UPDATE settings SET auto_update_enabled = ? WHERE id = 1`, enabled)
+	if err != nil {
+		return fmt.Errorf("store: set auto_update_enabled: %w", err)
+	}
+	return nil
+}

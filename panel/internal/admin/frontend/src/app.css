@@ -52,8 +52,9 @@ input:-webkit-autofill:focus {
   }
 
   .btn-primary {
-    @apply rounded-lg bg-up px-4 py-2 text-sm font-medium text-white transition-all duration-150
-           hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+    @apply rounded-lg bg-gradient-to-br from-up to-accent-2 px-4 py-2 text-sm font-medium text-white transition-all duration-150
+           hover:brightness-110 hover:shadow-[0_4px_18px_-4px_var(--color-up)] active:scale-95
+           disabled:opacity-50 disabled:shadow-none disabled:pointer-events-none cursor-pointer;
   }
 
   .btn-secondary {
@@ -68,8 +69,15 @@ input:-webkit-autofill:focus {
   }
 
   .card {
-    @apply rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-sm
+    @apply relative rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-sm
            shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset];
+  }
+
+  /* A hairline gradient across the top edge for cards that want a touch
+     more presence — used sparingly, not on every card in the app. */
+  .card-accent::before {
+    content: "";
+    @apply absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-transparent via-up/60 to-accent-2/60;
   }
 
   .icon-btn {

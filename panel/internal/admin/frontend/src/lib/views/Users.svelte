@@ -71,13 +71,32 @@
     users = users.filter((u) => u.id !== id)
     openUserId = null
   }
+
+  const AVATAR_HUES = ['from-up to-accent-2', 'from-accent-2 to-danger', 'from-ok to-up', 'from-warn to-danger']
+  function avatarGradient(name) {
+    let hash = 0
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+    return AVATAR_HUES[hash % AVATAR_HUES.length]
+  }
+  function initials(name) {
+    return name.trim().slice(0, 2).toUpperCase() || '??'
+  }
 </script>
 
 <div class="mx-auto max-w-5xl">
   <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-lg font-semibold">Пользователи</h1>
+    <div>
+      <h1 class="text-lg font-semibold">Пользователи</h1>
+      <p class="mt-0.5 text-xs text-muted">{users.length} всего{search.trim() ? ` · ${filtered.length} найдено` : ''}</p>
+    </div>
     <div class="flex gap-2">
-      <input class="input w-48" placeholder="Поиск…" bind:value={search} />
+      <div class="relative">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+          <path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <input class="input w-44 pl-8" placeholder="Поиск…" bind:value={search} />
+      </div>
       <input class="input w-48" placeholder="Имя нового пользователя" bind:value={newName}
         onkeydown={(e) => e.key === 'Enter' && createUser()} />
       <button class="btn-primary shrink-0" onclick={createUser} disabled={creating || !newName.trim()}>
@@ -93,7 +112,7 @@
       {users.length === 0 ? 'Пока нет ни одного пользователя' : 'Ничего не найдено'}
     </div>
   {:else}
-    <div class="card overflow-hidden">
+    <div class="card card-accent overflow-hidden">
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
@@ -110,12 +129,20 @@
             {@const status = statusOf(u)}
             {@const online = isOnline(u)}
             <tr
-              class="cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-surface-2/60"
+              class="group relative cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-surface-2/60"
               onclick={() => (openUserId = u.id)}
               animate:flip={{ duration: 200 }}
               transition:fade={{ duration: 150 }}
             >
-              <td class="px-4 py-3 font-medium">{u.name}</td>
+              <td class="relative px-4 py-3 font-medium">
+                <span class="absolute top-0 left-0 h-full w-0.5 scale-y-0 bg-gradient-to-b from-up to-accent-2 transition-transform duration-150 group-hover:scale-y-100"></span>
+                <div class="flex items-center gap-2.5">
+                  <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br {avatarGradient(u.name)} text-[10px] font-bold text-white shadow-sm">
+                    {initials(u.name)}
+                  </span>
+                  {u.name}
+                </div>
+              </td>
               <td class="px-4 py-3"><Pill tone={status.tone}>{status.label}</Pill></td>
               <td class="px-4 py-3">
                 <Pill tone={online ? 'ok' : 'muted'}>{online ? 'В сети' : 'Не в сети'}</Pill>

@@ -59,8 +59,9 @@ func (s *Store) migrate() error {
 		);
 
 		CREATE TABLE IF NOT EXISTS settings (
-			id          INTEGER PRIMARY KEY CHECK (id = 1),
-			public_addr TEXT NOT NULL DEFAULT ''
+			id                  INTEGER PRIMARY KEY CHECK (id = 1),
+			public_addr         TEXT NOT NULL DEFAULT '',
+			auto_update_enabled INTEGER NOT NULL DEFAULT 1
 		);
 		INSERT OR IGNORE INTO settings (id, public_addr) VALUES (1, '');
 
@@ -138,6 +139,9 @@ func (s *Store) migrate() error {
 	// already exists from an earlier version — do that by hand, tolerating
 	// the "already there" case, so upgrading doesn't require wiping data.
 	if err := s.addColumnIfMissing("users", "last_active_at", `TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	if err := s.addColumnIfMissing("settings", "auto_update_enabled", `INTEGER NOT NULL DEFAULT 1`); err != nil {
 		return err
 	}
 	return nil

@@ -1,6 +1,7 @@
 <script>
   import { fade } from 'svelte/transition'
   import { SaveGeneralSettings, CheckForUpdate, DownloadAndInstallUpdate } from '../../../wailsjs/go/main/App.js'
+  import Toggle from '../Toggle.svelte'
 
   let { settings = {}, onchange } = $props()
 

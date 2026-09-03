@@ -1,13 +1,16 @@
 <script>
   import { api } from '../api.js'
+  import Toggle from '../Toggle.svelte'
 
   let publicAddr = $state('')
+  let autoUpdateEnabled = $state(true)
   let savingAddr = $state(false)
   let addrSaved = $state(false)
 
   async function load() {
     const s = await api.getSettings()
     publicAddr = s.public_addr
+    autoUpdateEnabled = s.auto_update_enabled
   }
   load()
 
@@ -15,12 +18,17 @@
     savingAddr = true
     addrSaved = false
     try {
-      await api.updateSettings(publicAddr)
+      await api.updateSettings(publicAddr, autoUpdateEnabled)
       addrSaved = true
       setTimeout(() => (addrSaved = false), 2000)
     } finally {
       savingAddr = false
     }
+  }
+
+  async function onAutoUpdateChange(value) {
+    autoUpdateEnabled = value
+    await api.updateSettings(publicAddr, value)
   }
 </script>
 
@@ -35,6 +43,21 @@
       <button class="btn-primary shrink-0" onclick={saveAddr} disabled={savingAddr}>
         {savingAddr ? '…' : addrSaved ? '✓ Сохранено' : 'Сохранить'}
       </button>
+    </div>
+  </div>
+
+  <div class="card fade-in-up mt-4 p-5" style="animation-delay: 60ms">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-sm font-semibold">Автоматическое обновление</h2>
+        <p class="mt-1 max-w-md text-xs text-muted">
+          Панель сама проверяет и накатывает новые образы через Watchtower каждые
+          5 минут. Документация (эта страница на /docs) обновляется тем же
+          образом — вместе с панелью. Выключение не затрагивает уже
+          запущенный процесс, только будущие проверки.
+        </p>
+      </div>
+      <Toggle bind:checked={autoUpdateEnabled} onchange={onAutoUpdateChange} />
     </div>
   </div>
 

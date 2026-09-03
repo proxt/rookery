@@ -6,6 +6,7 @@ package admin
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -161,12 +162,19 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, map[string]string{"public_addr": publicAddr})
+	autoUpdate, err := s.store.AutoUpdateEnabled()
+	if err != nil {
+		slog.Error("admin: get auto update enabled", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]any{"public_addr": publicAddr, "auto_update_enabled": autoUpdate})
 }
 
 func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		PublicAddr string `json:"public_addr"`
+		PublicAddr        string `json:"public_addr"`
+		AutoUpdateEnabled bool   `json:"auto_update_enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -177,7 +185,13 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	s.logAudit(adminIDFrom(r.Context()), "settings.update", "settings", "", "public_addr="+req.PublicAddr)
+	if err := s.store.SetAutoUpdateEnabled(req.AutoUpdateEnabled); err != nil {
+		slog.Error("admin: set auto update enabled", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	s.logAudit(adminIDFrom(r.Context()), "settings.update", "settings", "",
+		fmt.Sprintf("public_addr=%s auto_update_enabled=%v", req.PublicAddr, req.AutoUpdateEnabled))
 	w.WriteHeader(http.StatusNoContent)
 }
 

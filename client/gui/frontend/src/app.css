@@ -15,6 +15,7 @@
 
   --color-up: #4f7cff;
   --color-down: #22c55e;
+  --color-accent-2: #7c5cff;
 }
 
 @font-face {
@@ -27,6 +28,7 @@
 html, body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -36,6 +38,7 @@ html, body {
 
 #app {
   height: 100vh;
+  overflow: hidden;
   background:
     radial-gradient(circle at 15% -10%, color-mix(in srgb, var(--color-up) 14%, transparent), transparent 55%),
     radial-gradient(circle at 100% 10%, color-mix(in srgb, var(--color-down) 10%, transparent), transparent 45%),
@@ -49,8 +52,8 @@ html, body {
   }
 
   .btn-primary {
-    @apply rounded-lg bg-up px-4 py-2 text-sm font-medium text-white transition-all duration-150
-           hover:brightness-110 active:scale-95 disabled:opacity-50 cursor-pointer;
+    @apply rounded-lg bg-gradient-to-br from-up to-accent-2 px-4 py-2 text-sm font-medium text-white transition-all duration-150
+           hover:brightness-110 hover:shadow-[0_4px_18px_-4px_var(--color-up)] active:scale-95 disabled:opacity-50 disabled:shadow-none cursor-pointer;
   }
 
   .btn-secondary {
@@ -59,8 +62,16 @@ html, body {
   }
 
   .card {
-    @apply rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-sm
+    @apply relative rounded-2xl border border-border/80 bg-surface/70 backdrop-blur-sm
            shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset];
+  }
+
+  /* A hairline gradient across the top edge — reused on cards that want a
+     touch more presence (About's hero card, Settings sections) without
+     making every card in the app compete for attention. */
+  .card-accent::before {
+    content: "";
+    @apply absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-up/70 to-transparent;
   }
 }
 
