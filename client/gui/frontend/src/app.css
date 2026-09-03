@@ -106,3 +106,26 @@ html, body {
 .fade-in-up {
   animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Thin, transparent-track, dark-thumb scrollbar that overlays content
+   instead of reserving layout width for it (Chromium/WebView2). Scoped to
+   .scroll-area rather than every scrollable element, since it also opts
+   into `overflow: overlay` — unsupported browsers just keep `auto` from
+   the first declaration, which still gets the thin-scrollbar styling. */
+.scroll-area {
+  overflow-y: auto;
+  overflow-y: overlay;
+}
+.scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}

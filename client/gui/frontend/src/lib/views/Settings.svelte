@@ -72,7 +72,7 @@
   }
 </script>
 
-<div class="flex flex-1 flex-col overflow-y-auto px-6 py-5">
+<div class="scroll-area flex flex-1 flex-col px-6 py-5">
   <h1 class="mb-4 text-xs font-semibold uppercase tracking-widest text-muted">Настройки</h1>
 
   <div class="card card-accent fade-in-up mb-3 p-4">

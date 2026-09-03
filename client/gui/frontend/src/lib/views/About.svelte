@@ -12,7 +12,7 @@
   }
 </script>
 
-<div class="flex flex-1 flex-col items-center overflow-y-auto px-6 py-8 text-center">
+<div class="scroll-area flex flex-1 flex-col items-center px-6 py-8 text-center">
   <div class="relative mb-4">
     <span class="breathe absolute -inset-5 -z-10 rounded-full bg-gradient-to-br from-up to-accent-2 opacity-30 blur-2xl"></span>
     <img src={logo} alt="Rookery" class="h-20 w-20 rounded-full shadow-[0_8px_28px_-6px_var(--color-up)]" />

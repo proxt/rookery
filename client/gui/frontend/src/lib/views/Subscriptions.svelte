@@ -89,7 +89,7 @@
 <div class="flex flex-1 flex-col overflow-hidden px-6 py-5">
   <h1 class="mb-4 text-xs font-semibold uppercase tracking-widest text-muted">Подписки</h1>
 
-  <div class="mb-4 flex-1 overflow-y-auto">
+  <div class="scroll-area mb-4 flex-1">
     {#if settings.subscriptions.length === 0}
       <div class="card p-6 text-center text-xs text-muted">
         Пока нет ни одной подписки — вставьте ссылку rookery://sub/… ниже
