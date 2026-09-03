@@ -1,8 +1,8 @@
 <script>
-  let { name } = $props()
+  let { name, class: className = 'text-muted' } = $props()
 </script>
 
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="mx-auto mb-1 text-muted">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class={className}>
   {#if name === 'activity'}
     <path
       d="M2 12h4l2.5-7 4 14 2.5-7H22"

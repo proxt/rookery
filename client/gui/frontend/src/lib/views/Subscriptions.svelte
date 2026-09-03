@@ -99,17 +99,20 @@
         {#each settings.subscriptions as sub (sub.id)}
           {@const isActive = sub.id === settings.activeSubscriptionId}
           {@const activeNode = sub.nodes.find((n) => n.id === sub.activeNodeId) ?? sub.nodes[0]}
-          <div class="card overflow-hidden" transition:fade={{ duration: 150 }}>
+          <div class="card overflow-hidden {isActive ? 'card-accent' : ''}" transition:fade={{ duration: 150 }}>
             <div class="flex w-full items-center justify-between gap-2 p-3">
               <button
                 class="flex min-w-0 flex-1 items-center gap-2.5 text-left cursor-pointer"
                 onclick={() => activate(sub.id)}
               >
-                <span
-                  class="h-2.5 w-2.5 shrink-0 rounded-full {isActive
-                    ? 'bg-state-connected shadow-[0_0_6px_var(--color-state-connected)]'
-                    : 'border border-border'}"
-                ></span>
+                <span class="relative flex h-2.5 w-2.5 shrink-0">
+                  {#if isActive}<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-state-connected opacity-75"></span>{/if}
+                  <span
+                    class="relative inline-flex h-2.5 w-2.5 rounded-full {isActive
+                      ? 'bg-state-connected shadow-[0_0_6px_var(--color-state-connected)]'
+                      : 'border border-border'}"
+                  ></span>
+                </span>
                 <span class="min-w-0">
                   <div class="truncate text-sm font-medium">{sub.name}</div>
                   <div class="truncate text-xs text-muted">
@@ -160,11 +163,11 @@
                       {@const picked = node.id === (sub.activeNodeId || sub.nodes[0]?.id)}
                       {@const ms = pings[sub.id]?.[node.id]}
                       <button
-                        class="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition-colors cursor-pointer {picked ? 'bg-up/10 text-text' : 'text-muted hover:bg-surface-2'}"
+                        class="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition-colors cursor-pointer {picked ? 'bg-gradient-to-r from-up/15 to-accent-2/10 text-text' : 'text-muted hover:bg-surface-2'}"
                         onclick={() => pickNode(sub.id, node.id)}
                       >
                         <span class="flex items-center gap-2">
-                          <span class="h-1.5 w-1.5 shrink-0 rounded-full {picked ? 'bg-up' : 'border border-border'}"></span>
+                          <span class="h-1.5 w-1.5 shrink-0 rounded-full {picked ? 'bg-gradient-to-br from-up to-accent-2' : 'border border-border'}"></span>
                           {node.name}
                           {#if node.tags}<span class="text-muted">· {node.tags}</span>{/if}
                           {#if ms !== undefined}
@@ -177,7 +180,7 @@
                             <span class="text-muted">· …</span>
                           {/if}
                         </span>
-                        {#if picked}<span class="text-up">✓</span>{/if}
+                        {#if picked}<span class="text-accent-2">✓</span>{/if}
                       </button>
                     {/each}
                   </div>

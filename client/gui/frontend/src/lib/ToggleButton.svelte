@@ -42,8 +42,7 @@
 
   {#if live}
     <span
-      class="breathe absolute -inset-4 rounded-full blur-2xl"
-      style="background: var(--glow)"
+      class="breathe absolute -inset-6 rounded-full blur-2xl bg-gradient-to-tr from-up via-accent-2 to-accent-3 opacity-70"
     ></span>
   {/if}
 
