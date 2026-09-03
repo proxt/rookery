@@ -4,6 +4,7 @@
 package subapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"html/template"
 	"log/slog"
@@ -14,6 +15,7 @@ import (
 	"github.com/rookery/panel/internal/store"
 	"github.com/rookery/shared/profile"
 	"github.com/rookery/shared/signaling"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 // Server implements the client-facing HTTP handlers.
@@ -89,14 +91,31 @@ func (s *Server) handleSub(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deepLink := profile.Encode(profile.Link{PanelAddr: publicAddr, Token: u.Token})
+		qrDataURI, err := qrDataURI(deepLink)
+		if err != nil {
+			slog.Error("subapi: generate qr code", "error", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
 		renderSubPage(w, subPageData{
-			Found: true, Name: u.Name, ExpiresAt: u.ExpiresAt, NodeCount: len(out.Nodes), DeepLink: template.URL(deepLink),
+			Found: true, Name: u.Name, ExpiresAt: u.ExpiresAt, NodeCount: len(out.Nodes),
+			DeepLink: template.URL(deepLink), QRCode: template.URL(qrDataURI),
 		})
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
+}
+
+// qrDataURI renders content as a QR code PNG and returns it as a data: URI
+// suitable for an <img src>.
+func qrDataURI(content string) (string, error) {
+	png, err := qrcode.Encode(content, qrcode.Medium, 220)
+	if err != nil {
+		return "", err
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(png), nil
 }
 
 // wantsHTML reports whether r looks like a human opening the link in a

@@ -358,6 +358,14 @@
     background: linear-gradient(135deg, var(--maccent), var(--maccent2)); color: #fff;
   }
   .mockup-sub-btn.secondary { background: var(--msurface2); color: var(--mtext); border: 1px solid var(--mborder); font-weight: 600; }
+  .mockup-qr {
+    width: 64px; height: 64px; margin: 14px auto 0; border-radius: 8px; background: #fff;
+    background-image:
+      repeating-conic-gradient(#0b0d11 0% 25%, transparent 0% 50%);
+    background-size: 10px 10px; background-position: 4px 4px; background-repeat: repeat;
+    background-clip: content-box; padding: 6px; box-sizing: border-box;
+  }
+  .mockup-qr-hint { font-size: 10px; color: var(--mmuted); margin-top: 4px; }
 
   .mockup-phone { max-width: 300px; margin: 0 auto; }
   .mockup-phone .mockup-main { padding: 12px; }
@@ -478,6 +486,7 @@
       <a class="nav-link" href="#client-gui">GUI</a>
       <a class="nav-link" href="#client-cli">CLI</a>
       <a class="nav-link" href="#client-link">Формат ссылки</a>
+      <a class="nav-link" href="#client-killswitch">Kill switch</a>
       <a class="nav-link" href="#client-update">Автообновление</a>
     </div>
 
@@ -794,6 +803,13 @@ volumes:
           <li>Удалить нельзя себя и нельзя последнего оставшегося админа — панель откажет с 400.</li>
           <li>Смена собственного пароля — там же, требует текущий пароль.</li>
         </ul>
+
+        <h3>Журнал действий</h3>
+        <p>Вкладка «Журнал» — кто, что и когда поменял: вход в панель, создание/удаление пользователей и нод,
+        изменение доступа к нодам, загрузка релизов и так далее. Каждая запись пишется <em>после</em> того, как
+        действие уже выполнено успешно, и делает это в фоне — сбой записи в журнал никогда не роняет само действие.</p>
+        <p>Хранится 90 дней — старые записи удаляются автоматически раз в сутки, журнал не растёт бесконечно.
+        Программный доступ — <code class="inline">GET /admin/api/audit-log?limit=100&amp;offset=0</code>, требует сессию.</p>
       </section>
 
       <section id="panel-releases">
@@ -948,10 +964,12 @@ volumes:
                   <span class="mockup-sub-btn">Установить в приложение</span>
                   <span class="mockup-sub-btn secondary">Скопировать ссылку</span>
                 </div>
+                <div class="mockup-qr" aria-hidden="true"></div>
+                <div class="mockup-qr-hint">Отсканируйте с телефона</div>
               </div>
             </div>
           </div>
-          <p class="mockup-caption">Так видит ссылку любой браузер — открытая с <code class="inline">Accept: text/html</code>. Кнопка «Установить» — это тот же <code class="inline">rookery://</code>-диплинк, что и в клиенте.</p>
+          <p class="mockup-caption">Так видит ссылку любой браузер — открытая с <code class="inline">Accept: text/html</code>. Кнопка «Установить» — это тот же <code class="inline">rookery://</code>-диплинк, что и в клиенте, а QR-код ниже кодирует ту же ссылку — генерируется на сервере, без сторонних сервисов.</p>
 
           <div class="code-block">
             <div class="code-head"><span>json</span><button class="copy-btn" data-copy>Копировать</button></div>
@@ -999,6 +1017,11 @@ sudo docker compose up -d</code></pre>
           внутренний адрес Docker (172.x), который снаружи недостижим — с ним подключение клиентов не установится.
           <code class="inline">network_mode: host</code> в compose-файле уже настроен именно поэтому.</p>
         </div>
+
+        <p>Кроме <code class="inline">POST /session</code> (сигналинг, требует подписанный токен), нода отвечает
+        на <code class="inline">GET /ping</code> — без авторизации, без тела, просто 200 как можно быстрее. Это
+        не сигналинг и не health-check для мониторинга, а то, что дёргает клиент, замеряя задержку до каждой
+        ноды подписки перед выбором сервера (см. <a href="#client-gui">клиент</a>).</p>
       </section>
 
       <section id="node-bare">
@@ -1109,8 +1132,9 @@ sudo systemctl enable --now rookery-node</code></pre>
         <p class="section-desc">Windows-приложение на Wails: вкладки Главная / Подписки / Настройки / О программе.</p>
         <ul>
           <li><strong>Добавление подписки</strong> — вкладка «Подписки», вставить ссылку (принимает и <code class="inline">rookery://sub/…</code>, и обычную <code class="inline">https://panel/sub/{token}</code>). Также срабатывает автоматически по клику на «Установить в приложение» на странице подписки — приложение зарегистрировано обработчиком схемы <code class="inline">rookery://</code>.</li>
-          <li><strong>Выбор сервера</strong> — разворачиваете подписку, отмечаете нужную ноду.</li>
+          <li><strong>Выбор сервера</strong> — разворачиваете подписку, отмечаете нужную ноду. При разворачивании клиент сам пингует каждую ноду подписки (<code class="inline">GET /ping</code> к ноде, короткий таймаут 2с) и показывает задержку в мс рядом с названием — недостижимые ноды помечены отдельно, вместо выбора вслепую.</li>
           <li><strong>Системный VPN</strong> — в Настройках, заворачивает весь трафик ОС через виртуальный адаптер (Wintun), а не только приложения с SOCKS5. Требует прав администратора.</li>
+          <li><strong>Kill switch</strong> — в Настройках, доступен только вместе с системным VPN (выключен по умолчанию). См. <a href="#client-killswitch">ниже</a>.</li>
           <li><strong>Обновления</strong> — кнопка «Проверить обновления» в Настройках, см. <a href="#client-update">ниже</a>.</li>
         </ul>
 
@@ -1125,14 +1149,14 @@ sudo systemctl enable --now rookery-node</code></pre>
             <div class="mockup-main">
               <div class="mockup-sub-tab">
                 <div class="mockup-sub-tab-head"><span>Мой VPN</span><span class="mockup-pill ok">подключено</span></div>
-                <div class="mockup-node-row"><span class="mockup-radio"></span><span>Германия · DE</span></div>
-                <div class="mockup-node-row"><span class="mockup-radio checked"></span><span>Чехия · CZ</span></div>
+                <div class="mockup-node-row"><span class="mockup-radio"></span><span>Германия · DE</span><span class="mockup-pill muted" style="margin-left:auto">31 мс</span></div>
+                <div class="mockup-node-row"><span class="mockup-radio checked"></span><span>Чехия · CZ</span><span class="mockup-pill muted" style="margin-left:auto">14 мс</span></div>
               </div>
               <div class="mockup-connect-btn">Подключить</div>
             </div>
           </div>
         </div>
-        <p class="mockup-caption">Вкладка «Подписки»: разворачиваете карточку — видите список нод этой подписки и выбираете, к какой подключиться.</p>
+        <p class="mockup-caption">Вкладка «Подписки»: разворачиваете карточку — видите список нод этой подписки, задержку до каждой и выбираете, к какой подключиться.</p>
       </section>
 
       <section id="client-cli">
@@ -1172,8 +1196,26 @@ log_level: "info"</code></pre>
         именно её показывает адресная строка браузера на странице подписки и кнопка «Копировать ссылку».</p>
       </section>
 
+      <section id="client-killswitch">
+        <h2><span class="num">25</span> Kill switch<a class="anchor-link" href="#client-killswitch">#</a></h2>
+        <p class="section-desc">Работает только вместе с системным VPN и <strong>выключен по умолчанию</strong> — это осознанный выбор, не сюрприз после обновления.</p>
+        <p>Пока туннель переподключается после обрыва, весь исходящий трафик мимо туннельного адаптера блокируется на
+        уровне брандмауэра Windows — ничего не утечёт напрямую через физический адаптер, пока связь не восстановится.
+        Реализовано двумя именованными правилами Windows Firewall (не WFP): блокировка всего исходящего трафика плюс
+        разрешение, привязанное к интерфейсу <code class="inline">RookeryTun</code>. Блокировка не включается на самом
+        первом неудачном подключении — только если туннель уже реально был активен и оборвался.</p>
+        <div class="callout warn">
+          <span class="callout-title">Аварийный автосброс через 10 минут</span>
+          <p>Если переподключиться не удаётся так долго — блокировка снимается сама, а в приложении появляется
+          предупреждение, что трафик восстановлен без защиты. Без этого предохранителя машина без пути к ноде
+          (например, вообще без интернета) осталась бы заблокированной навсегда.</p>
+        </div>
+        <p>При старте (GUI и CLI) приложение безусловно снимает оба правила, если они остались от предыдущего
+        аварийного завершения процесса — так блокировка не переживает краш надолго.</p>
+      </section>
+
       <section id="client-update">
-        <h2><span class="num">25</span> Автообновление приложения<a class="anchor-link" href="#client-update">#</a></h2>
+        <h2><span class="num">26</span> Автообновление приложения<a class="anchor-link" href="#client-update">#</a></h2>
         <p class="section-desc">В отличие от сервера, обновление клиента — по кнопке, не молча в фоне: заменить исполняемый
         файл на лету, пока он запущен, нельзя.</p>
         <ol class="step-list">
@@ -1185,7 +1227,7 @@ log_level: "info"</code></pre>
       <hr class="div"/>
 
       <section id="protocol-token">
-        <h2><span class="num">26</span> Протокол · токен сессии<a class="anchor-link" href="#protocol-token">#</a></h2>
+        <h2><span class="num">27</span> Протокол · токен сессии<a class="anchor-link" href="#protocol-token">#</a></h2>
         <p class="section-desc">Токен — не JWT и не что-то стандартное, но устроен похоже: подпись поверх полезной нагрузки.</p>
         <div class="code-block">
           <div class="code-head"><span>go</span><button class="copy-btn" data-copy>Копировать</button></div>
@@ -1203,7 +1245,7 @@ log_level: "info"</code></pre>
       </section>
 
       <section id="protocol-transport">
-        <h2><span class="num">27</span> Протокол · транспорт<a class="anchor-link" href="#protocol-transport">#</a></h2>
+        <h2><span class="num">28</span> Протокол · транспорт<a class="anchor-link" href="#protocol-transport">#</a></h2>
         <p class="section-desc">Один WebRTC DataChannel на сессию, поверх него — <a href="https://github.com/xtaci/smux" target="_blank" rel="noopener">smux</a> мультиплексирует все TCP/UDP-потоки клиента.</p>
         <div class="table-wrap">
           <table>
@@ -1220,7 +1262,7 @@ log_level: "info"</code></pre>
       <hr class="div"/>
 
       <section id="troubleshooting">
-        <h2><span class="num">28</span> Устранение неполадок<a class="anchor-link" href="#troubleshooting">#</a></h2>
+        <h2><span class="num">29</span> Устранение неполадок<a class="anchor-link" href="#troubleshooting">#</a></h2>
 
         <h3>Панель отвечает «connection reset» через Docker</h3>
         <p>Проверьте <code class="inline">listen_addr</code> в конфиге панели — должен быть <code class="inline">0.0.0.0:PORT</code>,
@@ -1256,6 +1298,18 @@ log_level: "info"</code></pre>
         <p>Схема <code class="inline">rookery://</code> регистрируется инсталлятором в реестре Windows
         (<code class="inline">HKEY_CLASSES_ROOT\rookery</code>) — если приложение стояло до пересборки инсталлятора
         с этой функцией, переустановите через новый <code class="inline">rookery-amd64-installer.exe</code>.</p>
+
+        <h3>Kill switch не снимается, интернета нет совсем</h3>
+        <p>Проще всего — просто запустить приложение заново: оно безусловно чистит оба правила брандмауэра при
+        каждом старте, независимо от того, как завершился предыдущий процесс. Если приложение недоступно —
+        вручную от администратора:</p>
+        <div class="code-block">
+          <div class="code-head"><span>powershell</span><button class="copy-btn" data-copy>Копировать</button></div>
+          <pre><code>netsh advfirewall firewall delete rule name="Rookery Kill Switch - Block Outbound"
+netsh advfirewall firewall delete rule name="Rookery Kill Switch - Allow Tunnel"</code></pre>
+        </div>
+        <p>В норме это не должно требоваться — есть автосброс через 10 минут без реконнекта и чистка при
+        каждом старте приложения; см. <a href="#client-killswitch">Kill switch</a>.</p>
       </section>
 
       <footer class="docfoot">

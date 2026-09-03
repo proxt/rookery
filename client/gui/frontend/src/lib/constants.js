@@ -10,6 +10,7 @@ export const State = {
 export const EventType = {
   STATE_CHANGED: 0,
   STATS_TICK: 1,
+  KILL_SWITCH_WARNING: 2,
 }
 
 export const STATE_LABEL = {

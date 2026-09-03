@@ -28,6 +28,7 @@
   let currentDown = $state(0)
 
   let settings = $state({ subscriptions: [], activeSubscriptionId: '', socksPort: 1080 })
+  let killSwitchWarning = $state('')
 
   const activeLabel = $derived.by(() => {
     const sub = settings.subscriptions.find((s) => s.id === settings.activeSubscriptionId)
@@ -53,10 +54,17 @@
           currentUp = 0
           currentDown = 0
         }
+        // Refetch for killSwitchEngaged — it's decided synchronously
+        // alongside the state transition on the Go side, not carried on
+        // the event itself.
+        GetStatus().then((s) => (status = s))
       } else if (ev.type === EventType.STATS_TICK) {
         currentUp = ev.bytesUpPerSec
         currentDown = ev.bytesDownPerSec
         history = [...history, { up: ev.bytesUpPerSec, down: ev.bytesDownPerSec }].slice(-HISTORY_LEN)
+        GetStatus().then((s) => (status = s))
+      } else if (ev.type === EventType.KILL_SWITCH_WARNING) {
+        killSwitchWarning = ev.err
         GetStatus().then((s) => (status = s))
       }
     })
@@ -84,6 +92,12 @@
 </script>
 
 <div class="flex h-screen flex-col">
+  {#if killSwitchWarning}
+    <div class="flex items-start justify-between gap-2 bg-state-error/15 px-4 py-2 text-xs text-state-error">
+      <span>{killSwitchWarning}</span>
+      <button class="shrink-0 cursor-pointer font-medium hover:underline" onclick={() => (killSwitchWarning = '')}>Скрыть</button>
+    </div>
+  {/if}
   {#if activeTab === 'dashboard'}
     <Dashboard {status} {history} {currentUp} {currentDown} {activeLabel} ontoggle={toggle} />
   {:else if activeTab === 'subscriptions'}

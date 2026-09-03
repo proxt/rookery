@@ -24,7 +24,9 @@ type Config struct {
 	StartMinimized       bool   `yaml:"start_minimized"`
 	AutoStart            bool   `yaml:"auto_start"`
 	SystemWide           bool   `yaml:"system_wide"`
-	LogLevel             string `yaml:"log_level"`
+	// KillSwitch has no effect unless SystemWide is also true.
+	KillSwitch bool   `yaml:"kill_switch"`
+	LogLevel   string `yaml:"log_level"`
 }
 
 // Load reads and validates a Config from a YAML file at path.

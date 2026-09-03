@@ -47,6 +47,12 @@ func (e *Engine) runSystemCapture(ctx context.Context, cfg Config) {
 	}
 	defer router.Teardown(context.Background())
 
+	// Only once routing has actually taken over the default route can a
+	// later drop be a "the tunnel that was carrying traffic just failed"
+	// event — gates the kill switch (see killSwitch.routingActive).
+	e.setKillSwitchRoutingActive(true)
+	defer e.setKillSwitchRoutingActive(false)
+
 	slog.Info("vpn: system-wide capture active")
 	defer slog.Info("vpn: system-wide capture stopped")
 

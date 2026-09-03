@@ -69,6 +69,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/api/releases", s.requireAuth(s.handleUploadRelease))
 	mux.HandleFunc("DELETE /admin/api/releases/{id}", s.requireAuth(s.handleDeleteRelease))
 
+	mux.HandleFunc("GET /admin/api/audit-log", s.requireAuth(s.handleListAuditLog))
+
 	uiSub, err := fs.Sub(uiFS, "frontend/dist")
 	if err != nil {
 		panic(err) // embedded at build time; cannot fail at runtime
@@ -128,6 +130,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 		Expires:  time.Now().Add(sessionTTL),
 	})
+	s.logAudit(adminID, "auth.login", "admin", adminID, "")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -174,6 +177,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "settings.update", "settings", "", "public_addr="+req.PublicAddr)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -202,6 +206,7 @@ func (s *Server) handleChangeOwnPassword(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(a.ID, "account.password.change", "admin", a.ID, "")
 	w.WriteHeader(http.StatusNoContent)
 }
 

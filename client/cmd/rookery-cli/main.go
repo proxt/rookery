@@ -15,6 +15,7 @@ import (
 	"github.com/rookery/client/internal/config"
 	"github.com/rookery/client/internal/engine"
 	"github.com/rookery/client/internal/subscription"
+	"github.com/rookery/client/internal/vpn"
 )
 
 func main() {
@@ -38,6 +39,13 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Best-effort safety net: if a previous run crashed while the kill
+	// switch was engaged, its firewall rules would otherwise survive
+	// indefinitely. Cleared unconditionally before anything else starts.
+	if err := vpn.CleanupStaleKillSwitchRules(ctx); err != nil {
+		slog.Warn("rookery-cli: cleanup stale kill switch rules", "error", err)
+	}
 
 	sub, err := subscription.Fetch(ctx, cfg.PanelAddr, cfg.Token)
 	if err != nil {
@@ -67,6 +75,7 @@ func run() error {
 		BufferedAmountHighWaterMark: uint64(cfg.BufferedAmountHighKB) * 1024,
 		ReconnectMaxBackoff:         time.Duration(cfg.ReconnectMaxBackoffS) * time.Second,
 		SystemWide:                  cfg.SystemWide,
+		KillSwitch:                  cfg.KillSwitch,
 	}
 
 	if err := eng.Start(ctx, engCfg); err != nil {
@@ -101,6 +110,8 @@ func logEvents(ctx context.Context, eng *engine.Engine) {
 					"rtt", status.RTT,
 					"active_streams", status.ActiveStreams,
 				)
+			case engine.EventKillSwitchWarning:
+				slog.Warn("kill switch", "message", ev.Err)
 			}
 		case <-ctx.Done():
 			return

@@ -62,6 +62,11 @@ type Config struct {
 	// adapter instead of requiring apps to be configured for the SOCKS5
 	// proxy individually. Requires administrator privileges.
 	SystemWide bool
+	// KillSwitch blocks all outbound traffic outside the tunnel adapter
+	// whenever the tunnel drops while SystemWide routing is active, until
+	// it reconnects (or killSwitchAutoDisengageAfter elapses). No effect
+	// unless SystemWide is also true.
+	KillSwitch bool
 }
 
 // StatusSnapshot is a point-in-time read of the tunnel's status.
@@ -73,6 +78,9 @@ type StatusSnapshot struct {
 	BytesUp       uint64        `json:"bytesUp"`
 	BytesDown     uint64        `json:"bytesDown"`
 	LastError     string        `json:"lastError"`
+	// KillSwitchEngaged is true while the kill switch is actively blocking
+	// outbound traffic outside the tunnel (see killswitch.go).
+	KillSwitchEngaged bool `json:"killSwitchEngaged"`
 }
 
 // EventType identifies what kind of Event was emitted.
@@ -81,6 +89,10 @@ type EventType int
 const (
 	EventStateChanged EventType = iota
 	EventStatsTick
+	// EventKillSwitchWarning is pushed when the kill switch auto-disengages
+	// after killSwitchAutoDisengageAfter without a successful reconnect —
+	// Err carries a human-readable message for the GUI to surface.
+	EventKillSwitchWarning
 )
 
 // Event is pushed on the Events() channel: a state transition or a periodic
@@ -122,6 +134,8 @@ type Engine struct {
 	activePC atomic.Pointer[webrtc.PeerConnection]
 
 	httpClient *http.Client
+
+	ks killSwitch
 }
 
 // New creates an idle Engine. Call Start to begin tunneling.
@@ -153,6 +167,7 @@ func (e *Engine) Start(ctx context.Context, cfg Config) error {
 	innerCtx, cancel := context.WithCancel(ctx)
 	e.cancel = cancel
 	e.running = true
+	e.armKillSwitch(cfg)
 	e.setState(innerCtx, StateConnecting, "")
 
 	e.wg.Add(4)
@@ -204,14 +219,19 @@ func (e *Engine) Status() StatusSnapshot {
 		uptime = time.Since(connectedAt)
 	}
 
+	e.ks.mu.Lock()
+	killSwitchEngaged := e.ks.engaged
+	e.ks.mu.Unlock()
+
 	return StatusSnapshot{
-		State:         state,
-		Uptime:        uptime,
-		RTT:           time.Duration(e.rtt.Load()),
-		ActiveStreams: int(e.activeStreams.Load()),
-		BytesUp:       e.bytesUp.Load(),
-		BytesDown:     e.bytesDown.Load(),
-		LastError:     lastErr,
+		State:             state,
+		Uptime:            uptime,
+		RTT:               time.Duration(e.rtt.Load()),
+		ActiveStreams:     int(e.activeStreams.Load()),
+		BytesUp:           e.bytesUp.Load(),
+		BytesDown:         e.bytesDown.Load(),
+		LastError:         lastErr,
+		KillSwitchEngaged: killSwitchEngaged,
 	}
 }
 
@@ -232,6 +252,8 @@ func (e *Engine) setState(ctx context.Context, state State, errMsg string) {
 		e.connectedAt = time.Now()
 	}
 	e.stateMu.Unlock()
+
+	e.onKillSwitchStateChanged(state)
 
 	select {
 	case e.events <- Event{Type: EventStateChanged, State: state, Err: errMsg}:

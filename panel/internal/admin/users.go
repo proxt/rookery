@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -128,6 +129,7 @@ func (s *Server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "user.create", "user", u.ID, u.Name)
 	writeJSON(w, v)
 }
 
@@ -148,6 +150,7 @@ func (s *Server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "user.update", "user", id, req.Name)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -157,6 +160,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "user.delete", "user", id, "")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -175,5 +179,6 @@ func (s *Server) handleSetUserNodes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "user.nodes.update", "user", id, fmt.Sprintf("%d nodes", len(req.NodeIDs)))
 	w.WriteHeader(http.StatusNoContent)
 }

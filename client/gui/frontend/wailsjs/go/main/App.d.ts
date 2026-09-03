@@ -21,13 +21,15 @@ export function GetStatus():Promise<engine.StatusSnapshot>;
 
 export function HandleExternalLink(arg1:string):Promise<void>;
 
+export function MeasureNodeLatencies(arg1:string):Promise<Record<string, number>>;
+
 export function OpenURL(arg1:string):Promise<void>;
 
 export function Quit():Promise<void>;
 
 export function RefreshSubscription(arg1:string):Promise<main.Subscription>;
 
-export function SaveGeneralSettings(arg1:number,arg2:boolean,arg3:boolean,arg4:boolean):Promise<void>;
+export function SaveGeneralSettings(arg1:number,arg2:boolean,arg3:boolean,arg4:boolean,arg5:boolean):Promise<void>;
 
 export function SetActiveNode(arg1:string,arg2:string):Promise<void>;
 

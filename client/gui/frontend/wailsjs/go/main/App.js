@@ -38,6 +38,10 @@ export function HandleExternalLink(arg1) {
   return window['go']['main']['App']['HandleExternalLink'](arg1);
 }
 
+export function MeasureNodeLatencies(arg1) {
+  return window['go']['main']['App']['MeasureNodeLatencies'](arg1);
+}
+
 export function OpenURL(arg1) {
   return window['go']['main']['App']['OpenURL'](arg1);
 }
@@ -50,8 +54,8 @@ export function RefreshSubscription(arg1) {
   return window['go']['main']['App']['RefreshSubscription'](arg1);
 }
 
-export function SaveGeneralSettings(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['SaveGeneralSettings'](arg1, arg2, arg3, arg4);
+export function SaveGeneralSettings(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SaveGeneralSettings'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function SetActiveNode(arg1, arg2) {

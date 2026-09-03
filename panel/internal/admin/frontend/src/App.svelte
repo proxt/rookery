@@ -8,6 +8,7 @@
   import Nodes from './lib/views/Nodes.svelte'
   import Releases from './lib/views/Releases.svelte'
   import Admins from './lib/views/Admins.svelte'
+  import AuditLog from './lib/views/AuditLog.svelte'
   import Settings from './lib/views/Settings.svelte'
 
   let authed = $state(null) // null = checking, false = login, true = app
@@ -48,7 +49,7 @@
     authed = false
   }
 
-  const views = { dashboard: Dashboard, users: Users, nodes: Nodes, releases: Releases, admins: Admins, settings: Settings }
+  const views = { dashboard: Dashboard, users: Users, nodes: Nodes, releases: Releases, admins: Admins, audit: AuditLog, settings: Settings }
   const CurrentView = $derived(views[tab])
 </script>
 

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -131,6 +132,7 @@ func (a *App) Connect() error {
 		BufferedAmountHighWaterMark: defaultBufferedAmountHighKB * 1024,
 		ReconnectMaxBackoff:         defaultReconnectMaxBackoffS * time.Second,
 		SystemWide:                  settings.SystemWide,
+		KillSwitch:                  settings.KillSwitch,
 	}
 	return a.eng.Start(a.ctx, cfg)
 }
@@ -153,9 +155,9 @@ func (a *App) GetAppSettings() (AppSettings, error) {
 }
 
 // SaveGeneralSettings updates the subscription-independent settings (SOCKS
-// port, autostart, start minimized, system-wide) without touching the
-// subscription list.
-func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, systemWide bool) error {
+// port, autostart, start minimized, system-wide, kill switch) without
+// touching the subscription list.
+func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, systemWide, killSwitch bool) error {
 	settings, err := a.GetAppSettings()
 	if err != nil {
 		return err
@@ -165,6 +167,7 @@ func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, syst
 	settings.AutoStart = autoStart
 	settings.StartMinimized = startMinimized
 	settings.SystemWide = systemWide
+	settings.KillSwitch = killSwitch
 
 	if err := saveSettings(a.settingsPath, settings); err != nil {
 		return err
@@ -283,6 +286,47 @@ func (a *App) updateCachedNodes(id string, fetched subscription.Subscription) er
 		}
 	}
 	return nil
+}
+
+// MeasureNodeLatencies pings every cached node of the given subscription
+// concurrently and returns round-trip time in milliseconds per node ID.
+// Unreachable nodes get -1 rather than being omitted, so the frontend can
+// tell "not measured yet" (key absent) from "measured, unreachable" (-1).
+func (a *App) MeasureNodeLatencies(subscriptionID string) (map[string]int, error) {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return nil, err
+	}
+
+	var target *Subscription
+	for i := range settings.Subscriptions {
+		if settings.Subscriptions[i].ID == subscriptionID {
+			target = &settings.Subscriptions[i]
+			break
+		}
+	}
+	if target == nil {
+		return nil, fmt.Errorf("подписка не найдена")
+	}
+
+	results := make(map[string]int, len(target.Nodes))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, node := range target.Nodes {
+		wg.Add(1)
+		go func(id, address string) {
+			defer wg.Done()
+			ms := -1
+			if d, err := subscription.MeasurePing(a.ctx, address); err == nil {
+				ms = int(d.Milliseconds())
+			}
+			mu.Lock()
+			results[id] = ms
+			mu.Unlock()
+		}(node.ID, node.Address)
+	}
+	wg.Wait()
+	return results, nil
 }
 
 // DeleteSubscription removes a saved subscription. If it was the active

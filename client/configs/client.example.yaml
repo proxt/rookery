@@ -35,4 +35,11 @@ auto_start: false
 # rights (the GUI's exe manifest requests elevation; run the CLI as Admin).
 system_wide: false
 
+# Blocks all outbound traffic outside the tunnel whenever it drops while
+# system_wide routing is active, until it reconnects (or 10 minutes pass
+# with no successful reconnect, at which point it disengages on its own so
+# a machine with no path back to the node isn't blocked forever). No effect
+# unless system_wide is also true.
+kill_switch: false
+
 log_level: "info"

@@ -122,6 +122,7 @@ func (s *Server) handleUploadRelease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "release.upload", "release", rel.ID, rel.Version)
 	writeJSON(w, s.toReleaseView(rel, publicAddr))
 }
 
@@ -139,5 +140,6 @@ func (s *Server) handleDeleteRelease(w http.ResponseWriter, r *http.Request) {
 	if err := os.RemoveAll(filepath.Dir(rel.FilePath)); err != nil {
 		slog.Warn("admin: remove release file", "error", err)
 	}
+	s.logAudit(adminIDFrom(r.Context()), "release.delete", "release", id, rel.Version)
 	w.WriteHeader(http.StatusNoContent)
 }

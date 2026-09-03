@@ -58,6 +58,7 @@ func (s *Server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "node.create", "node", n.ID, n.Name)
 	writeJSON(w, toNodeView(n))
 }
 
@@ -78,6 +79,7 @@ func (s *Server) handleUpdateNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "node.update", "node", id, req.Name)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -87,5 +89,6 @@ func (s *Server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "node.delete", "node", id, "")
 	w.WriteHeader(http.StatusNoContent)
 }

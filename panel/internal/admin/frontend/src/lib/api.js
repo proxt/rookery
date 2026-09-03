@@ -83,4 +83,6 @@ export const api = {
   statsUser: (id) => request('GET', `/admin/api/stats/users/${id}`),
   statsUserSeries: (id, hours = 24) => request('GET', `/admin/api/stats/users/${id}/series?hours=${hours}`),
   statsNode: (id) => request('GET', `/admin/api/stats/nodes/${id}`),
+
+  listAuditLog: (limit = 200) => request('GET', `/admin/api/audit-log?limit=${limit}`),
 }

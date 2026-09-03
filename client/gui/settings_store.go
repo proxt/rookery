@@ -64,6 +64,10 @@ type AppSettings struct {
 	AutoStart            bool           `json:"autoStart" yaml:"auto_start"`
 	StartMinimized       bool           `json:"startMinimized" yaml:"start_minimized"`
 	SystemWide           bool           `json:"systemWide" yaml:"system_wide"`
+	// KillSwitch has no effect unless SystemWide is also on. Defaults to
+	// off (unlike SystemWide) — it can block all internet access on an
+	// unexpected drop, so that's an explicit opt-in, not a surprise.
+	KillSwitch bool `json:"killSwitch" yaml:"kill_switch"`
 }
 
 // defaultSOCKSPort is used whenever no SOCKS port has been configured yet.

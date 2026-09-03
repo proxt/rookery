@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/rookery/client/internal/vpn"
 )
 
 //go:embed all:frontend/dist
@@ -32,6 +35,14 @@ func main() {
 			forwardLinkToRunningInstance(link)
 		}
 		os.Exit(0)
+	}
+
+	// Best-effort safety net: if a previous run crashed while the kill
+	// switch was engaged, its firewall rules would otherwise survive
+	// indefinitely (there's no GUI running to remove them). Cleared
+	// unconditionally before anything else starts.
+	if err := vpn.CleanupStaleKillSwitchRules(context.Background()); err != nil {
+		slog.Warn("main: cleanup stale kill switch rules", "error", err)
 	}
 
 	app := NewApp()

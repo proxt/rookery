@@ -18,6 +18,8 @@
     { label: 'Потоки', value: String(status.activeStreams), icon: 'layers' },
     { label: 'Трафик', value: formatBytes(status.bytesUp + status.bytesDown), icon: 'swap' },
   ])
+
+  const stateLabel = $derived(status.killSwitchEngaged ? 'Заблокировано (kill switch)' : STATE_LABEL[status.state])
 </script>
 
 <div class="flex flex-1 flex-col px-6 py-5">
@@ -31,11 +33,11 @@
     <ToggleButton state={status.state} onclick={ontoggle} />
     {#key status.state}
       <span
-        class="text-xs uppercase tracking-widest text-muted"
+        class="text-xs uppercase tracking-widest {status.killSwitchEngaged ? 'text-state-error' : 'text-muted'}"
         in:fade={{ duration: 250, delay: 100 }}
         out:fade={{ duration: 100 }}
       >
-        {STATE_LABEL[status.state]}
+        {stateLabel}
       </span>
     {/key}
   </div>

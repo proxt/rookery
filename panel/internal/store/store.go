@@ -115,6 +115,20 @@ func (s *Store) migrate() error {
 			size       INTEGER NOT NULL,
 			created_at TEXT NOT NULL
 		);
+
+		-- admin_name is denormalized (not a FK to admins) so a log entry stays
+		-- readable after the admin who made it is deleted.
+		CREATE TABLE IF NOT EXISTS audit_log (
+			id          TEXT PRIMARY KEY,
+			admin_id    TEXT NOT NULL,
+			admin_name  TEXT NOT NULL,
+			action      TEXT NOT NULL,
+			target_type TEXT NOT NULL DEFAULT '',
+			target_id   TEXT NOT NULL DEFAULT '',
+			detail      TEXT NOT NULL DEFAULT '',
+			created_at  TEXT NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
 	`)
 	if err != nil {
 		return fmt.Errorf("store: migrate: %w", err)

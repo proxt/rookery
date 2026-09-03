@@ -52,6 +52,7 @@ func (s *Server) handleCreateAdmin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "admin.create", "admin", a.ID, a.Username)
 	writeJSON(w, adminView{ID: a.ID, Username: a.Username, CreatedAt: a.CreatedAt.Format(time.RFC3339)})
 }
 
@@ -77,5 +78,6 @@ func (s *Server) handleDeleteAdmin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	s.logAudit(adminIDFrom(r.Context()), "admin.delete", "admin", id, "")
 	w.WriteHeader(http.StatusNoContent)
 }

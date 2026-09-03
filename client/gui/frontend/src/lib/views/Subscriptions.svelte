@@ -6,6 +6,7 @@
     SetActiveSubscription,
     SetActiveNode,
     RefreshSubscription,
+    MeasureNodeLatencies,
   } from '../../../wailsjs/go/main/App.js'
 
   let { settings = { subscriptions: [], activeSubscriptionId: '' }, onchange } = $props()
@@ -15,6 +16,23 @@
   let addError = $state('')
   let expandedId = $state(null)
   let refreshingId = $state(null)
+  // Ping results are transient (network conditions change instantly) —
+  // kept only in local UI state, never persisted to settings. Keyed by
+  // subscription id, then node id -> ms (-1 means measured & unreachable;
+  // absent means not measured yet).
+  let pings = $state({})
+  let measuringId = $state(null)
+
+  async function measureLatencies(subId) {
+    measuringId = subId
+    try {
+      pings[subId] = await MeasureNodeLatencies(subId)
+    } catch {
+      // leave whatever was there — a failed batch shouldn't wipe prior results
+    } finally {
+      measuringId = null
+    }
+  }
 
   async function handleAdd() {
     const link = linkInput.trim()
@@ -46,7 +64,9 @@
 
   function toggleExpand(id, e) {
     e.stopPropagation()
-    expandedId = expandedId === id ? null : id
+    const opening = expandedId !== id
+    expandedId = opening ? id : null
+    if (opening) measureLatencies(id)
   }
 
   async function pickNode(subId, nodeId) {
@@ -138,6 +158,7 @@
                   <div class="space-y-1">
                     {#each sub.nodes as node (node.id)}
                       {@const picked = node.id === (sub.activeNodeId || sub.nodes[0]?.id)}
+                      {@const ms = pings[sub.id]?.[node.id]}
                       <button
                         class="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition-colors cursor-pointer {picked ? 'bg-up/10 text-text' : 'text-muted hover:bg-surface-2'}"
                         onclick={() => pickNode(sub.id, node.id)}
@@ -146,6 +167,15 @@
                           <span class="h-1.5 w-1.5 shrink-0 rounded-full {picked ? 'bg-up' : 'border border-border'}"></span>
                           {node.name}
                           {#if node.tags}<span class="text-muted">· {node.tags}</span>{/if}
+                          {#if ms !== undefined}
+                            {#if ms < 0}
+                              <span class="text-state-error">· недоступна</span>
+                            {:else}
+                              <span class="text-muted">· {ms} мс</span>
+                            {/if}
+                          {:else if measuringId === sub.id}
+                            <span class="text-muted">· …</span>
+                          {/if}
                         </span>
                         {#if picked}<span class="text-up">✓</span>{/if}
                       </button>

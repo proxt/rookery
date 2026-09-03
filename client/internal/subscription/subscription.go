@@ -15,6 +15,10 @@ import (
 // httpTimeout bounds a single fetch.
 const httpTimeout = 10 * time.Second
 
+// pingTimeout bounds a single node latency probe — short, since it's UI
+// feedback for a node-picker list and one dead node shouldn't stall it.
+const pingTimeout = 2 * time.Second
+
 // Node is one relay server a subscription grants access to.
 type Node struct {
 	ID           string `json:"id"`
@@ -60,6 +64,34 @@ func Fetch(ctx context.Context, panelAddr, token string) (Subscription, error) {
 		return Subscription{}, fmt.Errorf("subscription: decode response: %w", err)
 	}
 	return sub, nil
+}
+
+// MeasurePing probes address's /ping endpoint and returns the round-trip
+// time. Result is intentionally not part of Node/Subscription — latency is
+// transient and measured client-side after a fetch, never persisted.
+func MeasurePing(ctx context.Context, address string) (time.Duration, error) {
+	url := strings.TrimSuffix(address, "/") + "/ping"
+
+	reqCtx, cancel := context.WithTimeout(ctx, pingTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, fmt.Errorf("subscription: build ping request: %w", err)
+	}
+
+	start := time.Now()
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("subscription: ping: %w", err)
+	}
+	defer resp.Body.Close()
+	elapsed := time.Since(start)
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("subscription: node returned status %d", resp.StatusCode)
+	}
+	return elapsed, nil
 }
 
 // FindNode returns the node with the given ID, if present.

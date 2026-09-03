@@ -8,6 +8,7 @@ export namespace engine {
 	    bytesUp: number;
 	    bytesDown: number;
 	    lastError: string;
+	    killSwitchEngaged: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new StatusSnapshot(source);
@@ -22,6 +23,7 @@ export namespace engine {
 	        this.bytesUp = source["bytesUp"];
 	        this.bytesDown = source["bytesDown"];
 	        this.lastError = source["lastError"];
+	        this.killSwitchEngaged = source["killSwitchEngaged"];
 	    }
 	}
 
@@ -94,6 +96,7 @@ export namespace main {
 	    autoStart: boolean;
 	    startMinimized: boolean;
 	    systemWide: boolean;
+	    killSwitch: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -107,6 +110,7 @@ export namespace main {
 	        this.autoStart = source["autoStart"];
 	        this.startMinimized = source["startMinimized"];
 	        this.systemWide = source["systemWide"];
+	        this.killSwitch = source["killSwitch"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

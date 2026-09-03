@@ -28,6 +28,11 @@ type subPageData struct {
 	// the custom scheme down to "#ZgotmplZ" — safe here since we build the
 	// whole value ourselves from panel data, not from unsanitized input.
 	DeepLink template.URL
+	// QRCode is a data: URI PNG of DeepLink for scanning from a phone. Same
+	// template.URL reasoning as DeepLink — html/template's default URL
+	// filter rejects data: URIs too, and this one is built entirely
+	// server-side from DeepLink, never from request input.
+	QRCode template.URL
 }
 
 var subPageTmpl = template.Must(template.New("sub").Parse(`<!doctype html>
@@ -61,6 +66,9 @@ var subPageTmpl = template.Must(template.New("sub").Parse(`<!doctype html>
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .stat { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); font-size: 13px; }
   .stat span:first-child { color: var(--muted); }
+  .qr { width: 148px; height: 148px; margin: 20px auto 0; padding: 10px; background: #fff; border-radius: 14px; }
+  .qr img { display: block; width: 100%; height: 100%; }
+  .qr-hint { color: var(--muted); font-size: 11.5px; margin: 8px 0 0; }
   a.primary, button { display: block; width: 100%; margin-top: 20px; box-sizing: border-box; cursor: pointer; border: none;
     border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 600; background: var(--accent); color: #fff;
     text-decoration: none; transition: filter .15s, transform .1s; }
@@ -82,6 +90,8 @@ var subPageTmpl = template.Must(template.New("sub").Parse(`<!doctype html>
     {{if .ExpiresAt}}<div class="stat"><span>Действует до</span><span>{{.ExpiresAt}}</span></div>{{end}}
     <a class="primary" href="{{.DeepLink}}">Установить в приложение</a>
     <button class="secondary" id="copy-btn" onclick="copyLink()">Скопировать ссылку вместо этого</button>
+    <div class="qr"><img src="{{.QRCode}}" alt="QR-код подписки" /></div>
+    <p class="qr-hint">Отсканируйте с телефона, где установлено приложение Rookery</p>
     <p class="hint">Если приложение Rookery установлено, ссылка выше подключит подписку автоматически. Иначе — скопируйте ссылку и вставьте её в приложении вручную.</p>
   {{else}}
     <div class="badge"><img src="/sub-assets/logo.png" alt="Rookery" /></div>

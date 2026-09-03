@@ -8,6 +8,7 @@
   let autoStart = $state(false)
   let startMinimized = $state(false)
   let systemWide = $state(false)
+  let killSwitch = $state(false)
 
   let saving = $state(false)
   let saveError = $state('')
@@ -50,6 +51,7 @@
     autoStart = settings.autoStart ?? false
     startMinimized = settings.startMinimized ?? false
     systemWide = settings.systemWide ?? false
+    killSwitch = settings.killSwitch ?? false
   })
 
   async function handleSave() {
@@ -57,7 +59,7 @@
     saveError = ''
     saved = false
     try {
-      await SaveGeneralSettings(Number(socksPort), autoStart, startMinimized, systemWide)
+      await SaveGeneralSettings(Number(socksPort), autoStart, startMinimized, systemWide, killSwitch && systemWide)
       await onchange()
       saved = true
       setTimeout(() => (saved = false), 1600)
@@ -91,10 +93,21 @@
     <span class="text-sm">Весь трафик ПК (системный VPN)</span>
     <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={systemWide} />
   </label>
-  <p class="mb-6 text-xs text-muted">
+  <p class="mb-4 text-xs text-muted">
     Заворачивает весь трафик системы через туннель, а не только приложения с
     настроенным SOCKS5. Требует прав администратора и завершает работу при
     одновременно включённом другом системном VPN.
+  </p>
+
+  <label class="mb-1 flex items-center justify-between {systemWide ? '' : 'opacity-40'}">
+    <span class="text-sm">Kill switch — блокировать трафик при обрыве</span>
+    <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={killSwitch} disabled={!systemWide} />
+  </label>
+  <p class="mb-6 text-xs text-muted">
+    Пока туннель переподключается, весь трафик мимо него блокируется — ничего
+    не утечёт напрямую. Если переподключиться не удаётся 10 минут, блокировка
+    снимается автоматически, чтобы не остаться без интернета совсем. Работает
+    только вместе с системным VPN.
   </p>
 
   {#if saveError}
