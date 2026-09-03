@@ -72,50 +72,57 @@
   }
 </script>
 
-<div class="flex flex-1 flex-col px-6 py-5">
+<div class="flex flex-1 flex-col overflow-y-auto px-6 py-5">
   <h1 class="mb-4 text-xs font-semibold uppercase tracking-widest text-muted">Настройки</h1>
 
-  <label class="mb-4 block">
-    <span class="mb-1 block text-xs text-muted">Порт SOCKS</span>
-    <input class="input" type="number" min="1" max="65535" bind:value={socksPort} />
-  </label>
+  <div class="card card-accent fade-in-up mb-3 p-4">
+    <label class="mb-1 block">
+      <span class="mb-1 block text-xs text-muted">Порт SOCKS</span>
+      <input class="input" type="number" min="1" max="65535" bind:value={socksPort} />
+    </label>
+  </div>
 
-  <label class="mb-2 flex items-center justify-between">
-    <span class="text-sm">Автозапуск при входе в систему</span>
-    <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={autoStart} />
-  </label>
+  <div class="card fade-in-up mb-3 divide-y divide-border p-1" style="animation-delay: 40ms">
+    <label class="flex items-center justify-between gap-3 px-3 py-3">
+      <span class="text-sm">Автозапуск при входе в систему</span>
+      <Toggle bind:checked={autoStart} />
+    </label>
+    <label class="flex items-center justify-between gap-3 px-3 py-3">
+      <span class="text-sm">Запускать свёрнутым</span>
+      <Toggle bind:checked={startMinimized} />
+    </label>
+  </div>
 
-  <label class="mb-2 flex items-center justify-between">
-    <span class="text-sm">Запускать свёрнутым</span>
-    <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={startMinimized} />
-  </label>
+  <div class="card fade-in-up mb-3 p-4" style="animation-delay: 80ms">
+    <label class="flex items-center justify-between gap-3">
+      <span class="text-sm">Весь трафик ПК (системный VPN)</span>
+      <Toggle bind:checked={systemWide} />
+    </label>
+    <p class="mt-2 text-xs text-muted">
+      Заворачивает весь трафик системы через туннель, а не только приложения с
+      настроенным SOCKS5. Требует прав администратора и завершает работу при
+      одновременно включённом другом системном VPN.
+    </p>
 
-  <label class="mb-1 flex items-center justify-between">
-    <span class="text-sm">Весь трафик ПК (системный VPN)</span>
-    <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={systemWide} />
-  </label>
-  <p class="mb-4 text-xs text-muted">
-    Заворачивает весь трафик системы через туннель, а не только приложения с
-    настроенным SOCKS5. Требует прав администратора и завершает работу при
-    одновременно включённом другом системном VPN.
-  </p>
-
-  <label class="mb-1 flex items-center justify-between {systemWide ? '' : 'opacity-40'}">
-    <span class="text-sm">Kill switch — блокировать трафик при обрыве</span>
-    <input type="checkbox" class="h-4 w-4 accent-up" bind:checked={killSwitch} disabled={!systemWide} />
-  </label>
-  <p class="mb-6 text-xs text-muted">
-    Пока туннель переподключается, весь трафик мимо него блокируется — ничего
-    не утечёт напрямую. Если переподключиться не удаётся 10 минут, блокировка
-    снимается автоматически, чтобы не остаться без интернета совсем. Работает
-    только вместе с системным VPN.
-  </p>
+    <div class="mt-3 border-t border-border pt-3">
+      <label class="flex items-center justify-between gap-3 {systemWide ? '' : 'opacity-40'}">
+        <span class="text-sm">Kill switch — блокировать трафик при обрыве</span>
+        <Toggle bind:checked={killSwitch} disabled={!systemWide} />
+      </label>
+      <p class="mt-2 text-xs text-muted">
+        Пока туннель переподключается, весь трафик мимо него блокируется — ничего
+        не утечёт напрямую. Если переподключиться не удаётся 10 минут, блокировка
+        снимается автоматически, чтобы не остаться без интернета совсем. Работает
+        только вместе с системным VPN.
+      </p>
+    </div>
+  </div>
 
   {#if saveError}
     <p class="mb-3 text-xs text-state-error" transition:fade={{ duration: 150 }}>{saveError}</p>
   {/if}
 
-  <div class="mb-6 flex items-center gap-3">
+  <div class="mb-3 flex items-center gap-3">
     <button class="btn-primary" onclick={handleSave} disabled={saving}>
       {saving ? 'Сохранение…' : 'Сохранить'}
     </button>
@@ -124,7 +131,7 @@
     {/if}
   </div>
 
-  <div class="card p-4">
+  <div class="card fade-in-up mb-4 p-4" style="animation-delay: 120ms">
     <div class="mb-1 text-xs font-semibold uppercase tracking-widest text-muted">Обновления</div>
     <p class="mb-3 text-xs text-muted">Версия проверяется по подписке, выбранной активной.</p>
 

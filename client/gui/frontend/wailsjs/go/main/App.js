@@ -30,6 +30,10 @@ export function GetAppSettings() {
   return window['go']['main']['App']['GetAppSettings']();
 }
 
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
+}
+
 export function GetStatus() {
   return window['go']['main']['App']['GetStatus']();
 }

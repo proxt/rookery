@@ -12,10 +12,13 @@
 <nav class="flex shrink-0 border-t border-border bg-surface/80 backdrop-blur-sm">
   {#each tabs as tab (tab.id)}
     <button
-      class="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium
+      class="relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium
              transition-colors cursor-pointer {active === tab.id ? 'text-up' : 'text-muted hover:text-text'}"
       onclick={() => onselect(tab.id)}
     >
+      {#if active === tab.id}
+        <span class="absolute top-0 h-0.5 w-6 rounded-full bg-gradient-to-r from-up to-accent-2"></span>
+      {/if}
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
         {#if tab.icon === 'home'}
           <path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />

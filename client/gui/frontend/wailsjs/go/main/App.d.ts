@@ -17,6 +17,8 @@ export function DownloadAndInstallUpdate(arg1:string):Promise<void>;
 
 export function GetAppSettings():Promise<main.AppSettings>;
 
+export function GetAppVersion():Promise<string>;
+
 export function GetStatus():Promise<engine.StatusSnapshot>;
 
 export function HandleExternalLink(arg1:string):Promise<void>;
