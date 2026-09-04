@@ -61,7 +61,7 @@ func (e *Engine) handleSOCKSConn(ctx context.Context, conn net.Conn) {
 	}
 
 	host, ip := hostAndIP(dest.addrType, dest.addr)
-	if e.decide("", host, ip) == routing.ActionDirect {
+	if e.decide(e.exeNameForConn(conn), host, ip) == routing.ActionDirect {
 		e.handleDirectTCP(ctx, conn, dest)
 		return
 	}

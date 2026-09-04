@@ -146,8 +146,15 @@ func (a *udpAssociation) closeAllStreams() {
 func (a *udpAssociation) forward(ctx context.Context, dest destination, payload []byte) {
 	key := fmt.Sprintf("%d|%s|%d", dest.addrType, dest.addr, dest.port)
 
+	a.mu.Lock()
+	clientPort := 0
+	if a.clientAddr != nil {
+		clientPort = a.clientAddr.Port
+	}
+	a.mu.Unlock()
+
 	host, ip := hostAndIP(dest.addrType, dest.addr)
-	if a.engine.decide("", host, ip) == routing.ActionDirect {
+	if a.engine.decide(exeNameForUDPPort(clientPort), host, ip) == routing.ActionDirect {
 		a.forwardDirect(ctx, key, dest, payload)
 		return
 	}
