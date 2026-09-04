@@ -6,6 +6,7 @@
   import BottomNav from './lib/BottomNav.svelte'
   import Dashboard from './lib/views/Dashboard.svelte'
   import Subscriptions from './lib/views/Subscriptions.svelte'
+  import RoutingRules from './lib/views/RoutingRules.svelte'
   import Settings from './lib/views/Settings.svelte'
   import About from './lib/views/About.svelte'
 
@@ -134,6 +135,8 @@
     />
   {:else if activeTab === 'subscriptions'}
     <Subscriptions {settings} onchange={reloadSettings} />
+  {:else if activeTab === 'routing'}
+    <RoutingRules {settings} onchange={reloadSettings} />
   {:else if activeTab === 'settings'}
     <Settings {settings} onchange={reloadSettings} />
   {:else}

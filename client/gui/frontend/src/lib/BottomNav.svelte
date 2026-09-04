@@ -4,6 +4,7 @@
   const tabs = [
     { id: 'dashboard', label: 'Главная', icon: 'home' },
     { id: 'subscriptions', label: 'Подписки', icon: 'profiles' },
+    { id: 'routing', label: 'Маршруты', icon: 'routing' },
     { id: 'settings', label: 'Настройки', icon: 'settings' },
     { id: 'about', label: 'О программе', icon: 'about' },
   ]
@@ -26,6 +27,8 @@
         {:else if tab.icon === 'profiles'}
           <circle cx="12" cy="8" r="3.2" stroke="currentColor" stroke-width="2" />
           <path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        {:else if tab.icon === 'routing'}
+          <path d="M4 6h6a2 2 0 0 1 2 2v8a2 2 0 0 0 2 2h6M16 6l4 4-4 4M4 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
         {:else if tab.icon === 'settings'}
           <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
           <path

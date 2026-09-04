@@ -7,6 +7,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/rookery/client/internal/routing"
 	"github.com/rookery/client/internal/subscription"
 )
 
@@ -30,6 +31,10 @@ type Subscription struct {
 	Token        string       `json:"token" yaml:"token"`
 	ActiveNodeID string       `json:"activeNodeId" yaml:"active_node_id"`
 	Nodes        []CachedNode `json:"nodes" yaml:"nodes"`
+	// RoutingRuleSet caches the panel-assigned rule set from the last
+	// successful fetch, if any is assigned. Applied unless the user has
+	// switched PanelRoutingEnabled off in favor of purely local rules.
+	RoutingRuleSet *routing.RuleSet `json:"routingRuleSet" yaml:"routing_rule_set"`
 }
 
 // ActiveNode returns the subscription's currently selected node, falling
@@ -73,13 +78,28 @@ type AppSettings struct {
 	// one extra refresh right at startup, independent of the interval.
 	SubAutoRefreshMinutes int  `json:"subAutoRefreshMinutes" yaml:"sub_auto_refresh_minutes"`
 	SubRefreshOnLaunch    bool `json:"subRefreshOnLaunch" yaml:"sub_refresh_on_launch"`
+	// PanelRoutingEnabled toggles whether the active subscription's
+	// panel-assigned routing rule set (if any) is applied. Defaults to on —
+	// an assigned rule set should take effect without extra setup.
+	PanelRoutingEnabled bool `json:"panelRoutingEnabled" yaml:"panel_routing_enabled"`
+	// LocalRoutingRuleSets are rule sets the user builds directly in the
+	// app. They always take precedence over the subscription's rule set on
+	// a conflicting destination (see routing.NewMatcher / app.go's
+	// buildMatcher).
+	LocalRoutingRuleSets []routing.RuleSet `json:"localRoutingRuleSets" yaml:"local_routing_rule_sets"`
 }
 
 // defaultSOCKSPort is used whenever no SOCKS port has been configured yet.
 const defaultSOCKSPort = 1080
 
 func defaultAppSettings() AppSettings {
-	return AppSettings{Subscriptions: []Subscription{}, SOCKSPort: defaultSOCKSPort, SystemWide: true}
+	return AppSettings{
+		Subscriptions:        []Subscription{},
+		SOCKSPort:            defaultSOCKSPort,
+		SystemWide:           true,
+		PanelRoutingEnabled:  true,
+		LocalRoutingRuleSets: []routing.RuleSet{},
+	}
 }
 
 // loadSettings reads settings from path. A missing file is not an error —
@@ -106,6 +126,14 @@ func loadSettings(path string) (AppSettings, error) {
 	for i := range s.Subscriptions {
 		if s.Subscriptions[i].Nodes == nil {
 			s.Subscriptions[i].Nodes = []CachedNode{}
+		}
+	}
+	if s.LocalRoutingRuleSets == nil {
+		s.LocalRoutingRuleSets = []routing.RuleSet{}
+	}
+	for i := range s.LocalRoutingRuleSets {
+		if s.LocalRoutingRuleSets[i].Rules == nil {
+			s.LocalRoutingRuleSets[i].Rules = []routing.Rule{}
 		}
 	}
 	return s, nil

@@ -4,16 +4,19 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/rookery/client/internal/engine"
+	"github.com/rookery/client/internal/routing"
 	"github.com/rookery/client/internal/subscription"
 	"github.com/rookery/shared/profile"
 )
@@ -190,8 +193,27 @@ func (a *App) Connect() error {
 		ReconnectMaxBackoff:         defaultReconnectMaxBackoffS * time.Second,
 		SystemWide:                  settings.SystemWide,
 		KillSwitch:                  settings.KillSwitch,
+		Matcher:                     buildMatcher(settings, fetched.RoutingRuleSet),
 	}
 	return a.eng.Start(a.ctx, cfg)
+}
+
+// buildMatcher assembles the routing.Matcher used for the connection about
+// to start: the user's local rule sets first (they always win on a
+// conflicting destination), then the active subscription's panel-assigned
+// rule set — freshly fetched, not the on-disk cache, same as node selection
+// above — if any and if not disabled via PanelRoutingEnabled. Returns nil
+// (tunnel everything, the engine's default) when there's nothing to apply.
+func buildMatcher(settings AppSettings, panelRuleSet *routing.RuleSet) *routing.Matcher {
+	var sets []routing.RuleSet
+	sets = append(sets, settings.LocalRoutingRuleSets...)
+	if settings.PanelRoutingEnabled && panelRuleSet != nil {
+		sets = append(sets, *panelRuleSet)
+	}
+	if len(sets) == 0 {
+		return nil
+	}
+	return routing.NewMatcher(sets...)
 }
 
 // Disconnect stops the tunnel.
@@ -289,6 +311,7 @@ func (a *App) AddSubscriptionFromLink(link string) (Subscription, error) {
 		if existing.PanelAddr == l.PanelAddr && existing.Token == l.Token {
 			existing.Name = name
 			existing.Nodes = cacheNodes(fetched.Nodes)
+			existing.RoutingRuleSet = fetched.RoutingRuleSet
 			if _, ok := existing.ActiveNode(); !ok && len(fetched.Nodes) > 0 {
 				existing.ActiveNodeID = fetched.Nodes[0].ID
 			}
@@ -304,7 +327,7 @@ func (a *App) AddSubscriptionFromLink(link string) (Subscription, error) {
 		return Subscription{}, err
 	}
 
-	sub := Subscription{ID: id, Name: name, PanelAddr: l.PanelAddr, Token: l.Token, Nodes: cacheNodes(fetched.Nodes)}
+	sub := Subscription{ID: id, Name: name, PanelAddr: l.PanelAddr, Token: l.Token, Nodes: cacheNodes(fetched.Nodes), RoutingRuleSet: fetched.RoutingRuleSet}
 	if len(fetched.Nodes) > 0 {
 		sub.ActiveNodeID = fetched.Nodes[0].ID
 	}
@@ -344,6 +367,7 @@ func (a *App) RefreshSubscription(id string) (Subscription, error) {
 		return Subscription{}, fmt.Errorf("не удалось обновить подписку: %w", err)
 	}
 	target.Nodes = cacheNodes(fetched.Nodes)
+	target.RoutingRuleSet = fetched.RoutingRuleSet
 	if _, ok := target.ActiveNode(); !ok && len(fetched.Nodes) > 0 {
 		target.ActiveNodeID = fetched.Nodes[0].ID
 	}
@@ -364,6 +388,7 @@ func (a *App) updateCachedNodes(id string, fetched subscription.Subscription) er
 	for i := range settings.Subscriptions {
 		if settings.Subscriptions[i].ID == id {
 			settings.Subscriptions[i].Nodes = cacheNodes(fetched.Nodes)
+			settings.Subscriptions[i].RoutingRuleSet = fetched.RoutingRuleSet
 			return saveSettings(a.settingsPath, settings)
 		}
 	}
@@ -457,6 +482,210 @@ func (a *App) SetActiveNode(subscriptionID, nodeID string) error {
 		}
 	}
 	return fmt.Errorf("подписка не найдена")
+}
+
+// SetPanelRoutingEnabled toggles whether the active subscription's
+// panel-assigned routing rule set (if any) is applied on top of the user's
+// local rule sets.
+func (a *App) SetPanelRoutingEnabled(enabled bool) error {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return err
+	}
+	settings.PanelRoutingEnabled = enabled
+	return saveSettings(a.settingsPath, settings)
+}
+
+// CreateLocalRoutingRuleSet adds a new, empty local routing rule set.
+func (a *App) CreateLocalRoutingRuleSet(name string) (routing.RuleSet, error) {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return routing.RuleSet{}, err
+	}
+	id, err := randomID()
+	if err != nil {
+		return routing.RuleSet{}, err
+	}
+	if name == "" {
+		name = "Без названия"
+	}
+	rs := routing.RuleSet{ID: id, Name: name, Rules: []routing.Rule{}}
+	settings.LocalRoutingRuleSets = append(settings.LocalRoutingRuleSets, rs)
+	if err := saveSettings(a.settingsPath, settings); err != nil {
+		return routing.RuleSet{}, err
+	}
+	return rs, nil
+}
+
+// UpdateLocalRoutingRuleSet replaces a local rule set's name and rules in
+// full — the frontend always edits a whole set at once, same convention as
+// the panel's admin API. Rules without an ID get one generated here.
+func (a *App) UpdateLocalRoutingRuleSet(id, name string, rules []routing.Rule) (routing.RuleSet, error) {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return routing.RuleSet{}, err
+	}
+	for i := range settings.LocalRoutingRuleSets {
+		if settings.LocalRoutingRuleSets[i].ID != id {
+			continue
+		}
+		for j := range rules {
+			if rules[j].ID == "" {
+				rid, err := randomID()
+				if err != nil {
+					return routing.RuleSet{}, err
+				}
+				rules[j].ID = rid
+			}
+		}
+		if name == "" {
+			name = "Без названия"
+		}
+		settings.LocalRoutingRuleSets[i].Name = name
+		settings.LocalRoutingRuleSets[i].Rules = rules
+		if err := saveSettings(a.settingsPath, settings); err != nil {
+			return routing.RuleSet{}, err
+		}
+		return settings.LocalRoutingRuleSets[i], nil
+	}
+	return routing.RuleSet{}, fmt.Errorf("набор правил не найден")
+}
+
+// DeleteLocalRoutingRuleSet removes a local routing rule set.
+func (a *App) DeleteLocalRoutingRuleSet(id string) error {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return err
+	}
+	kept := settings.LocalRoutingRuleSets[:0]
+	for _, rs := range settings.LocalRoutingRuleSets {
+		if rs.ID != id {
+			kept = append(kept, rs)
+		}
+	}
+	settings.LocalRoutingRuleSets = kept
+	return saveSettings(a.settingsPath, settings)
+}
+
+// RoutingExportResult is what ExportRoutingRuleSet returns: where the file
+// was written (empty if the user cancelled the save dialog — not an error)
+// and how many rules the target format couldn't represent.
+type RoutingExportResult struct {
+	Path    string `json:"path"`
+	Skipped int    `json:"skipped"`
+}
+
+// ExportRoutingRuleSet writes rs to a file the user picks, in either
+// Rookery's own JSON shape ("rookery") or a v2ray-core routing config
+// ("v2ray" — the format v2ray and Happ both use for custom routing rules).
+func (a *App) ExportRoutingRuleSet(rs routing.RuleSet, format string) (RoutingExportResult, error) {
+	var data []byte
+	var skipped int
+	var err error
+	defaultFilename := sanitizeFilename(rs.Name)
+	if format == "v2ray" {
+		data, skipped, err = routing.ToV2rayRoutingJSON(rs)
+		defaultFilename += ".v2ray.json"
+	} else {
+		data, err = json.MarshalIndent(rs, "", "  ")
+		defaultFilename += ".rookery.json"
+	}
+	if err != nil {
+		return RoutingExportResult{}, err
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Экспорт правил маршрутизации",
+		DefaultFilename: defaultFilename,
+	})
+	if err != nil {
+		return RoutingExportResult{}, err
+	}
+	if path == "" {
+		return RoutingExportResult{}, nil // user cancelled
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return RoutingExportResult{}, err
+	}
+	return RoutingExportResult{Path: path, Skipped: skipped}, nil
+}
+
+// RoutingImportResult is what ImportLocalRoutingRuleSet returns: the newly
+// created local rule set (zero value if the user cancelled the open dialog)
+// and how many rules the source file had that Rookery's model can't
+// represent (e.g. geosite: entries, or app rules when reading a v2ray file).
+type RoutingImportResult struct {
+	RuleSet routing.RuleSet `json:"ruleSet"`
+	Skipped int             `json:"skipped"`
+}
+
+// ImportLocalRoutingRuleSet reads a routing rule set from a file the user
+// picks — either Rookery's own JSON shape or a v2ray-core routing config
+// (also what Happ exports for custom routing) — and adds it as a new local
+// rule set.
+func (a *App) ImportLocalRoutingRuleSet(format string) (RoutingImportResult, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Импорт правил маршрутизации"})
+	if err != nil {
+		return RoutingImportResult{}, err
+	}
+	if path == "" {
+		return RoutingImportResult{}, nil // user cancelled
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return RoutingImportResult{}, fmt.Errorf("чтение файла: %w", err)
+	}
+
+	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	var rs routing.RuleSet
+	var skipped int
+	if format == "v2ray" {
+		rs, skipped, err = routing.FromV2rayRoutingJSON(data, name)
+	} else {
+		err = json.Unmarshal(data, &rs)
+		if rs.Name == "" {
+			rs.Name = name
+		}
+	}
+	if err != nil {
+		return RoutingImportResult{}, fmt.Errorf("не удалось разобрать файл: %w", err)
+	}
+
+	id, err := randomID()
+	if err != nil {
+		return RoutingImportResult{}, err
+	}
+	rs.ID = id
+	for i := range rs.Rules {
+		if rs.Rules[i].ID == "" {
+			rid, err := randomID()
+			if err != nil {
+				return RoutingImportResult{}, err
+			}
+			rs.Rules[i].ID = rid
+		}
+	}
+
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return RoutingImportResult{}, err
+	}
+	settings.LocalRoutingRuleSets = append(settings.LocalRoutingRuleSets, rs)
+	if err := saveSettings(a.settingsPath, settings); err != nil {
+		return RoutingImportResult{}, err
+	}
+	return RoutingImportResult{RuleSet: rs, Skipped: skipped}, nil
+}
+
+// sanitizeFilename strips characters Windows rejects in file names from a
+// rule set's display name, for use as a save-dialog default.
+func sanitizeFilename(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = "routing"
+	}
+	replacer := strings.NewReplacer("/", "-", "\\", "-", ":", "-", "*", "-", "?", "-", `"`, "-", "<", "-", ">", "-", "|", "-")
+	return replacer.Replace(name)
 }
 
 // HandleExternalLink adds link as a new subscription and brings the window

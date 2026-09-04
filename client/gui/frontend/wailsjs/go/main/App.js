@@ -14,6 +14,14 @@ export function Connect() {
   return window['go']['main']['App']['Connect']();
 }
 
+export function CreateLocalRoutingRuleSet(arg1) {
+  return window['go']['main']['App']['CreateLocalRoutingRuleSet'](arg1);
+}
+
+export function DeleteLocalRoutingRuleSet(arg1) {
+  return window['go']['main']['App']['DeleteLocalRoutingRuleSet'](arg1);
+}
+
 export function DeleteSubscription(arg1) {
   return window['go']['main']['App']['DeleteSubscription'](arg1);
 }
@@ -24,6 +32,10 @@ export function Disconnect() {
 
 export function DownloadAndInstallUpdate(arg1) {
   return window['go']['main']['App']['DownloadAndInstallUpdate'](arg1);
+}
+
+export function ExportRoutingRuleSet(arg1, arg2) {
+  return window['go']['main']['App']['ExportRoutingRuleSet'](arg1, arg2);
 }
 
 export function GetAppSettings() {
@@ -40,6 +52,10 @@ export function GetStatus() {
 
 export function HandleExternalLink(arg1) {
   return window['go']['main']['App']['HandleExternalLink'](arg1);
+}
+
+export function ImportLocalRoutingRuleSet(arg1) {
+  return window['go']['main']['App']['ImportLocalRoutingRuleSet'](arg1);
 }
 
 export function MeasureNodeLatencies(arg1) {
@@ -70,10 +86,18 @@ export function SetActiveSubscription(arg1) {
   return window['go']['main']['App']['SetActiveSubscription'](arg1);
 }
 
+export function SetPanelRoutingEnabled(arg1) {
+  return window['go']['main']['App']['SetPanelRoutingEnabled'](arg1);
+}
+
 export function SetSystemWideMode(arg1) {
   return window['go']['main']['App']['SetSystemWideMode'](arg1);
 }
 
 export function Show() {
   return window['go']['main']['App']['Show']();
+}
+
+export function UpdateLocalRoutingRuleSet(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateLocalRoutingRuleSet'](arg1, arg2, arg3);
 }

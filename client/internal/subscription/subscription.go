@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/rookery/client/internal/routing"
 )
 
 // httpTimeout bounds a single fetch.
@@ -32,6 +34,11 @@ type Node struct {
 type Subscription struct {
 	Name  string `json:"name"`
 	Nodes []Node `json:"nodes"`
+	// RoutingRuleSet is the panel-assigned routing rule set for this
+	// subscription's user, if one is assigned — nil otherwise. The JSON
+	// shape matches routing.RuleSet exactly (see panel's subapi handlers),
+	// so it decodes directly with no intermediate DTO.
+	RoutingRuleSet *routing.RuleSet `json:"routing_rule_set,omitempty"`
 }
 
 // Fetch resolves a subscription by calling panelAddr's /sub/{token}
