@@ -97,6 +97,8 @@ export namespace main {
 	    startMinimized: boolean;
 	    systemWide: boolean;
 	    killSwitch: boolean;
+	    subAutoRefreshMinutes: number;
+	    subRefreshOnLaunch: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -111,6 +113,8 @@ export namespace main {
 	        this.startMinimized = source["startMinimized"];
 	        this.systemWide = source["systemWide"];
 	        this.killSwitch = source["killSwitch"];
+	        this.subAutoRefreshMinutes = source["subAutoRefreshMinutes"];
+	        this.subRefreshOnLaunch = source["subRefreshOnLaunch"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

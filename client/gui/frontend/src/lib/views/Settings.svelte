@@ -10,6 +10,8 @@
   let startMinimized = $state(false)
   let systemWide = $state(false)
   let killSwitch = $state(false)
+  let subAutoRefreshMinutes = $state(0)
+  let subRefreshOnLaunch = $state(false)
 
   let saving = $state(false)
   let saveError = $state('')
@@ -53,6 +55,8 @@
     startMinimized = settings.startMinimized ?? false
     systemWide = settings.systemWide ?? false
     killSwitch = settings.killSwitch ?? false
+    subAutoRefreshMinutes = settings.subAutoRefreshMinutes ?? 0
+    subRefreshOnLaunch = settings.subRefreshOnLaunch ?? false
   })
 
   async function handleSave() {
@@ -60,7 +64,15 @@
     saveError = ''
     saved = false
     try {
-      await SaveGeneralSettings(Number(socksPort), autoStart, startMinimized, systemWide, killSwitch && systemWide)
+      await SaveGeneralSettings(
+        Number(socksPort),
+        autoStart,
+        startMinimized,
+        systemWide,
+        killSwitch && systemWide,
+        Number(subAutoRefreshMinutes),
+        subRefreshOnLaunch
+      )
       await onchange()
       saved = true
       setTimeout(() => (saved = false), 1600)
@@ -116,6 +128,19 @@
         только вместе с системным VPN.
       </p>
     </div>
+  </div>
+
+  <div class="card fade-in-up mb-3 p-4" style="animation-delay: 100ms">
+    <div class="mb-1 text-xs font-semibold uppercase tracking-widest text-muted">Обновление подписок</div>
+    <label class="mt-2 flex items-center justify-between gap-3">
+      <span class="text-sm">Обновлять при запуске приложения</span>
+      <Toggle bind:checked={subRefreshOnLaunch} />
+    </label>
+    <label class="mt-3 mb-1 block">
+      <span class="mb-1 block text-xs text-muted">Автообновление каждые (минут, 0 — выключено)</span>
+      <input class="input" type="number" min="0" max="1440" bind:value={subAutoRefreshMinutes} />
+    </label>
+    <p class="mt-1 text-xs text-muted">Список серверов у всех сохранённых подписок будет обновляться сам, без ручного «Обновить».</p>
   </div>
 
   {#if saveError}

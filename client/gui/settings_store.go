@@ -68,6 +68,11 @@ type AppSettings struct {
 	// off (unlike SystemWide) — it can block all internet access on an
 	// unexpected drop, so that's an explicit opt-in, not a surprise.
 	KillSwitch bool `json:"killSwitch" yaml:"kill_switch"`
+	// SubAutoRefreshMinutes re-fetches every saved subscription's node
+	// list on this interval when > 0 (0 = off). SubRefreshOnLaunch does
+	// one extra refresh right at startup, independent of the interval.
+	SubAutoRefreshMinutes int  `json:"subAutoRefreshMinutes" yaml:"sub_auto_refresh_minutes"`
+	SubRefreshOnLaunch    bool `json:"subRefreshOnLaunch" yaml:"sub_refresh_on_launch"`
 }
 
 // defaultSOCKSPort is used whenever no SOCKS port has been configured yet.

@@ -68,6 +68,63 @@ func (a *App) startup(ctx context.Context) {
 		go a.HandleExternalLink(link)
 	}
 	go startLinkListener(a)
+
+	if err == nil && settings.SubRefreshOnLaunch {
+		go a.refreshAllSubscriptions()
+	}
+	go a.autoRefreshSubscriptionsLoop()
+}
+
+// subAutoRefreshCheckInterval is how often the background loop wakes up to
+// check whether a refresh is due — independent of the user-configured
+// SubAutoRefreshMinutes, so toggling that setting takes effect within one
+// tick instead of needing a restart.
+const subAutoRefreshCheckInterval = time.Minute
+
+// autoRefreshSubscriptionsLoop re-fetches every saved subscription's node
+// list every SubAutoRefreshMinutes, for as long as the app runs. Reads the
+// setting fresh each tick rather than once at startup.
+func (a *App) autoRefreshSubscriptionsLoop() {
+	ticker := time.NewTicker(subAutoRefreshCheckInterval)
+	defer ticker.Stop()
+
+	var lastRefresh time.Time
+	for range ticker.C {
+		settings, err := a.GetAppSettings()
+		if err != nil || settings.SubAutoRefreshMinutes <= 0 {
+			continue
+		}
+		interval := time.Duration(settings.SubAutoRefreshMinutes) * time.Minute
+		if time.Since(lastRefresh) < interval {
+			continue
+		}
+		lastRefresh = time.Now()
+		a.refreshAllSubscriptions()
+	}
+}
+
+// refreshAllSubscriptions re-fetches every saved subscription's node list.
+// Best-effort: one subscription's panel being unreachable doesn't stop the
+// others, and failures are only logged, never surfaced (there's no
+// synchronous caller waiting on this — see HandleExternalLink for the same
+// convention).
+func (a *App) refreshAllSubscriptions() {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return
+	}
+	for _, sub := range settings.Subscriptions {
+		if _, err := a.RefreshSubscription(sub.ID); err != nil {
+			slog.Warn("app: auto-refresh subscription", "subscription", sub.Name, "error", err)
+		}
+	}
+	if a.ctx != nil {
+		// Not "subscription:added" — that event also switches the frontend
+		// to the Subscriptions tab, which would yank the user there every
+		// time a background auto-refresh fires. This one just says "reload
+		// whatever you have cached", no navigation side effect.
+		runtime.EventsEmit(a.ctx, "settings:updated")
+	}
 }
 
 // forwardEvents relays engine.Events() to the frontend as "tunnel:event",
@@ -162,9 +219,9 @@ func (a *App) GetAppSettings() (AppSettings, error) {
 }
 
 // SaveGeneralSettings updates the subscription-independent settings (SOCKS
-// port, autostart, start minimized, system-wide, kill switch) without
-// touching the subscription list.
-func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, systemWide, killSwitch bool) error {
+// port, autostart, start minimized, system-wide, kill switch, subscription
+// auto-refresh) without touching the subscription list.
+func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, systemWide, killSwitch bool, subAutoRefreshMinutes int, subRefreshOnLaunch bool) error {
 	settings, err := a.GetAppSettings()
 	if err != nil {
 		return err
@@ -175,6 +232,8 @@ func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, syst
 	settings.StartMinimized = startMinimized
 	settings.SystemWide = systemWide
 	settings.KillSwitch = killSwitch
+	settings.SubAutoRefreshMinutes = subAutoRefreshMinutes
+	settings.SubRefreshOnLaunch = subRefreshOnLaunch
 
 	if err := saveSettings(a.settingsPath, settings); err != nil {
 		return err

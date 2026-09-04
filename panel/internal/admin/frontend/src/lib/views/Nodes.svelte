@@ -5,6 +5,7 @@
   import { relativeTime } from '../format.js'
   import Pill from '../Pill.svelte'
   import NodeModal from '../NodeModal.svelte'
+  import { countryFlag } from '../flags.js'
 
   let nodes = $state([])
   let loading = $state(true)
@@ -53,7 +54,9 @@
           onclick={() => (openNode = n)}
         >
           <div class="min-w-0">
-            <div class="truncate text-sm font-semibold">{n.name}</div>
+            <div class="truncate text-sm font-semibold">
+              {#if countryFlag(n.tags)}<span class="mr-1">{countryFlag(n.tags)}</span>{/if}{n.name}
+            </div>
             <div class="truncate text-xs text-muted">{n.address}</div>
             {#if n.tags}<div class="mt-1 text-[11px] text-muted">{n.tags}</div>{/if}
           </div>

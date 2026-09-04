@@ -76,6 +76,12 @@
       activeTab = 'subscriptions'
       reloadSettings()
     })
+
+    // Fired after a background auto-refresh of subscriptions — same reload,
+    // but without yanking the user over to the Subscriptions tab.
+    EventsOn('settings:updated', () => {
+      reloadSettings()
+    })
   })
 
   async function toggle() {

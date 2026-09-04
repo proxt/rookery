@@ -8,6 +8,7 @@
     RefreshSubscription,
     MeasureNodeLatencies,
   } from '../../../wailsjs/go/main/App.js'
+  import { countryFlag } from '../flags.js'
 
   let { settings = { subscriptions: [], activeSubscriptionId: '' }, onchange } = $props()
 
@@ -116,7 +117,7 @@
                 <span class="min-w-0">
                   <div class="truncate text-sm font-medium">{sub.name}</div>
                   <div class="truncate text-xs text-muted">
-                    {activeNode ? activeNode.name : 'нет серверов'} · {sub.nodes.length} серв.
+                    {activeNode ? `${countryFlag(activeNode.tags) ? countryFlag(activeNode.tags) + ' ' : ''}${activeNode.name}` : 'нет серверов'} · {sub.nodes.length} серв.
                   </div>
                 </span>
               </button>
@@ -168,6 +169,7 @@
                       >
                         <span class="flex items-center gap-2">
                           <span class="h-1.5 w-1.5 shrink-0 rounded-full {picked ? 'bg-gradient-to-br from-up to-accent-2' : 'border border-border'}"></span>
+                          {#if countryFlag(node.tags)}<span>{countryFlag(node.tags)}</span>{/if}
                           {node.name}
                           {#if node.tags}<span class="text-muted">· {node.tags}</span>{/if}
                           {#if ms !== undefined}
