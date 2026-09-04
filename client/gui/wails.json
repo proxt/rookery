@@ -8,5 +8,9 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Rookery"
+  },
+  "info": {
+    "productName": "Rookery",
+    "productVersion": "0.5.0"
   }
 }
