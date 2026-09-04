@@ -16,6 +16,8 @@ import (
 	"github.com/xtaci/smux"
 
 	"github.com/rookery/client/internal/routing"
+	"github.com/rookery/client/internal/vpn"
+	"github.com/rookery/client/internal/vpn/dnscache"
 )
 
 // State is the tunnel's connection state.
@@ -145,6 +147,21 @@ type Engine struct {
 	ks killSwitch
 
 	matcher atomic.Pointer[routing.Matcher]
+
+	// router is the system-wide route controller, set only while
+	// runSystemCapture has an active Router (i.e. SystemWide is on and
+	// setup succeeded) — used by the VPN-capture relay path to add/remove
+	// per-destination bypass routes for routing.ActionDirect traffic. Nil
+	// outside that window, including for the whole SOCKS5-only case.
+	router atomic.Pointer[vpn.Router]
+
+	// dnsCache reverses DNS answers seen on the tunneled/direct DNS UDP
+	// path back to domain names, so a later TCP/UDP flow under system-wide
+	// capture — which only ever sees a destination IP — can still match a
+	// domain routing rule. Lives for the Engine's lifetime rather than
+	// being reset per Start/Stop: stale entries just expire on their own
+	// TTL and an empty cache is always a safe starting state.
+	dnsCache *dnscache.Cache
 }
 
 // New creates an idle Engine. Call Start to begin tunneling.
@@ -152,6 +169,7 @@ func New() *Engine {
 	return &Engine{
 		events:     make(chan Event, 128),
 		httpClient: &http.Client{Timeout: 30 * time.Second},
+		dnsCache:   dnscache.New(),
 	}
 }
 

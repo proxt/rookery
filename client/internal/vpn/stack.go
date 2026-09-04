@@ -24,12 +24,15 @@ const nicID = tcpip.NICID(1)
 
 // TCPFlowHandler is called for each new intercepted TCP connection. conn
 // behaves like a net.Conn; the destination the local app was trying to
-// reach is destAddr:destPort. The handler owns conn and must close it.
-type TCPFlowHandler func(ctx context.Context, destAddr string, destPort uint16, conn net.Conn)
+// reach is destAddr:destPort, and srcPort is the local port the app itself
+// used to open the connection (for app-based routing — it's the same local
+// port Windows' TCP table reports for that process). The handler owns conn
+// and must close it.
+type TCPFlowHandler func(ctx context.Context, destAddr string, destPort, srcPort uint16, conn net.Conn)
 
 // UDPFlowHandler is called for each new intercepted UDP flow. Same contract
 // as TCPFlowHandler.
-type UDPFlowHandler func(ctx context.Context, destAddr string, destPort uint16, conn net.Conn)
+type UDPFlowHandler func(ctx context.Context, destAddr string, destPort, srcPort uint16, conn net.Conn)
 
 // Netstack terminates every TCP/UDP flow the OS routes to the TUN device
 // (via promiscuous + spoofing mode, so it isn't limited to intercepting
@@ -90,7 +93,7 @@ func (n *Netstack) Run(ctx context.Context, onTCP TCPFlowHandler, onUDP UDPFlowH
 			return
 		}
 		r.Complete(false)
-		onTCP(ctx, id.LocalAddress.String(), id.LocalPort, gonet.NewTCPConn(&wq, ep))
+		onTCP(ctx, id.LocalAddress.String(), id.LocalPort, id.RemotePort, gonet.NewTCPConn(&wq, ep))
 	})
 	n.stack.SetTransportProtocolHandler(tcp.ProtocolNumber, fwdTCP.HandlePacket)
 
@@ -101,7 +104,7 @@ func (n *Netstack) Run(ctx context.Context, onTCP TCPFlowHandler, onUDP UDPFlowH
 		if err != nil {
 			return
 		}
-		go onUDP(ctx, id.LocalAddress.String(), id.LocalPort, gonet.NewUDPConn(&wq, ep))
+		go onUDP(ctx, id.LocalAddress.String(), id.LocalPort, id.RemotePort, gonet.NewUDPConn(&wq, ep))
 	})
 	n.stack.SetTransportProtocolHandler(udp.ProtocolNumber, fwdUDP.HandlePacket)
 
