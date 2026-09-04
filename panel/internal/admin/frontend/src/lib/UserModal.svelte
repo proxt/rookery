@@ -4,7 +4,7 @@
   import { formatBytes, formatDateTime, toDatetimeLocal, fromDatetimeLocal } from './format.js'
   import Pill from './Pill.svelte'
   import TrafficChart from './TrafficChart.svelte'
-  import { countryFlag } from './flags.js'
+  import { countryFlagClass, tagsWithoutCountry } from './flags.js'
 
   let { userId, allNodes = [], onclose, onchanged, ondeleted } = $props()
 
@@ -202,10 +202,11 @@
               {#each allNodes as n (n.id)}
                 <label class="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2.5 transition-colors hover:border-up/40">
                   <div>
-                    <div class="text-sm font-medium">
-                      {#if countryFlag(n.tags)}<span class="mr-1">{countryFlag(n.tags)}</span>{/if}{n.name}
+                    <div class="flex items-center gap-1.5 text-sm font-medium">
+                      {#if countryFlagClass(n.tags)}<span class="{countryFlagClass(n.tags)} shrink-0 rounded-[2px]"></span>{/if}
+                      <span>{n.name}</span>
                     </div>
-                    {#if n.tags}<div class="text-xs text-muted">{n.tags}</div>{/if}
+                    {#if tagsWithoutCountry(n.tags)}<div class="text-xs text-muted">{tagsWithoutCountry(n.tags)}</div>{/if}
                   </div>
                   <input type="checkbox" class="h-4 w-4 accent-[var(--color-up)]" checked={selectedNodeIds.has(n.id)} onchange={() => toggleNode(n.id)} />
                 </label>

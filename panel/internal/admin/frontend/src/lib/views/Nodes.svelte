@@ -5,7 +5,7 @@
   import { relativeTime } from '../format.js'
   import Pill from '../Pill.svelte'
   import NodeModal from '../NodeModal.svelte'
-  import { countryFlag } from '../flags.js'
+  import { countryFlagClass, tagsWithoutCountry } from '../flags.js'
 
   let nodes = $state([])
   let loading = $state(true)
@@ -54,11 +54,12 @@
           onclick={() => (openNode = n)}
         >
           <div class="min-w-0">
-            <div class="truncate text-sm font-semibold">
-              {#if countryFlag(n.tags)}<span class="mr-1">{countryFlag(n.tags)}</span>{/if}{n.name}
+            <div class="flex items-center gap-1.5 truncate text-sm font-semibold">
+              {#if countryFlagClass(n.tags)}<span class="{countryFlagClass(n.tags)} shrink-0 rounded-[2px]"></span>{/if}
+              <span class="truncate">{n.name}</span>
             </div>
             <div class="truncate text-xs text-muted">{n.address}</div>
-            {#if n.tags}<div class="mt-1 text-[11px] text-muted">{n.tags}</div>{/if}
+            {#if tagsWithoutCountry(n.tags)}<div class="mt-1 text-[11px] text-muted">{tagsWithoutCountry(n.tags)}</div>{/if}
           </div>
           <div class="ml-3 flex shrink-0 flex-col items-end gap-1.5">
             <Pill tone={isOnline(n) ? 'ok' : 'muted'}>{isOnline(n) ? 'online' : 'offline'}</Pill>

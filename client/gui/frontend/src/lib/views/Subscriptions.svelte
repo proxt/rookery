@@ -8,7 +8,7 @@
     RefreshSubscription,
     MeasureNodeLatencies,
   } from '../../../wailsjs/go/main/App.js'
-  import { countryFlag } from '../flags.js'
+  import { countryFlagClass, tagsWithoutCountry } from '../flags.js'
 
   let { settings = { subscriptions: [], activeSubscriptionId: '' }, onchange } = $props()
 
@@ -116,8 +116,9 @@
                 </span>
                 <span class="min-w-0">
                   <div class="truncate text-sm font-medium">{sub.name}</div>
-                  <div class="truncate text-xs text-muted">
-                    {activeNode ? `${countryFlag(activeNode.tags) ? countryFlag(activeNode.tags) + ' ' : ''}${activeNode.name}` : 'нет серверов'} · {sub.nodes.length} серв.
+                  <div class="flex items-center gap-1 truncate text-xs text-muted">
+                    {#if activeNode && countryFlagClass(activeNode.tags)}<span class="{countryFlagClass(activeNode.tags)} shrink-0 rounded-[2px]"></span>{/if}
+                    <span class="truncate">{activeNode ? activeNode.name : 'нет серверов'} · {sub.nodes.length} серв.</span>
                   </div>
                 </span>
               </button>
@@ -169,9 +170,9 @@
                       >
                         <span class="flex items-center gap-2">
                           <span class="h-1.5 w-1.5 shrink-0 rounded-full {picked ? 'bg-gradient-to-br from-up to-accent-2' : 'border border-border'}"></span>
-                          {#if countryFlag(node.tags)}<span>{countryFlag(node.tags)}</span>{/if}
+                          {#if countryFlagClass(node.tags)}<span class="{countryFlagClass(node.tags)} shrink-0 rounded-[2px]"></span>{/if}
                           {node.name}
-                          {#if node.tags}<span class="text-muted">· {node.tags}</span>{/if}
+                          {#if tagsWithoutCountry(node.tags)}<span class="text-muted">· {tagsWithoutCountry(node.tags)}</span>{/if}
                           {#if ms !== undefined}
                             {#if ms < 0}
                               <span class="text-state-error">· недоступна</span>

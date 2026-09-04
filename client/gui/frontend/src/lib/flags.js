@@ -22,3 +22,29 @@ export function countryFlag(tags) {
     REGIONAL_INDICATOR_BASE + (code.charCodeAt(1) - 65)
   )
 }
+
+// flag-icons CSS class for the parsed country code (e.g. "fi-cz"), or ''
+// if tags has no recognizable country token. Windows doesn't render
+// Unicode regional-indicator flag emoji as pictures (shows "CZ" as plain
+// text instead, unlike macOS/iOS) — flag-icons draws a real SVG flag via
+// CSS regardless of platform, so this is what's actually used in the UI;
+// countryFlag() above is kept for contexts (docs, plain-text exports)
+// where an embedded image isn't an option.
+export function countryFlagClass(tags) {
+  const code = countryCodeFromTags(tags)
+  return code ? `fi fi-${code.toLowerCase()}` : ''
+}
+
+// The rest of a free-text tags string with the parsed country-code token
+// removed — for displaying alongside a flag icon without repeating the
+// code as text underneath it.
+export function tagsWithoutCountry(tags) {
+  if (!tags) return ''
+  const code = countryCodeFromTags(tags)
+  if (!code) return tags
+  return tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t.toUpperCase() !== code)
+    .join(', ')
+}
