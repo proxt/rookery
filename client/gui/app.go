@@ -41,6 +41,10 @@ type App struct {
 	// (os.Args[1]), stashed here because ctx isn't ready yet in main —
 	// startup() picks it up once it is.
 	pendingLink string
+
+	// logs backs GetLogs — set directly by main before wails.Run, since
+	// it's created alongside the slog handler main installs.
+	logs *logRing
 }
 
 // NewApp creates an idle App. Call startup (invoked by Wails) before using it.
@@ -232,6 +236,15 @@ func (a *App) GetAppVersion() string {
 // live updates via the "tunnel:event" event.
 func (a *App) GetStatus() engine.StatusSnapshot {
 	return a.eng.Status()
+}
+
+// GetLogs returns the last logRingSize lines logged by this process, oldest
+// first, for the Logs screen.
+func (a *App) GetLogs() []string {
+	if a.logs == nil {
+		return []string{}
+	}
+	return a.logs.Lines()
 }
 
 // GetAppSettings reads all persisted settings (subscriptions + general

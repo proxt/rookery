@@ -46,6 +46,10 @@ export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
 
+export function GetLogs() {
+  return window['go']['main']['App']['GetLogs']();
+}
+
 export function GetStatus() {
   return window['go']['main']['App']['GetStatus']();
 }

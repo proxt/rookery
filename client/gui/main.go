@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -37,6 +38,14 @@ func main() {
 		os.Exit(0)
 	}
 
+	// The GUI has no console of its own for the default slog logger's
+	// output to go to (unlike rookery-cli, which sets its own), so every
+	// slog call in the process would otherwise be invisible. Duplicating
+	// into a bounded ring buffer is what backs the Logs screen; stderr is
+	// kept too for `wails dev`/attached-debugger runs.
+	logs := newLogRing()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.MultiWriter(os.Stderr, logs), &slog.HandlerOptions{Level: slog.LevelInfo})))
+
 	// Best-effort safety net: if a previous run crashed while the kill
 	// switch was engaged, its firewall rules would otherwise survive
 	// indefinitely (there's no GUI running to remove them). Cleared
@@ -47,15 +56,16 @@ func main() {
 
 	app := NewApp()
 	app.pendingLink = link
+	app.logs = logs
 
 	go systray.Run(func() { setupTray(app) }, func() {})
 
 	err := wails.Run(&options.App{
 		Title:     "Rookery",
-		Width:     440,
-		Height:    700,
-		MinWidth:  380,
-		MinHeight: 600,
+		Width:     1040,
+		Height:    680,
+		MinWidth:  860,
+		MinHeight: 560,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

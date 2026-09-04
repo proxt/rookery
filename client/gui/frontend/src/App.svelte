@@ -3,16 +3,17 @@
   import { Connect, Disconnect, GetStatus, GetAppSettings, SetSystemWideMode } from '../wailsjs/go/main/App.js'
   import { EventsOn } from '../wailsjs/runtime/runtime.js'
   import { State, EventType } from './lib/constants.js'
-  import BottomNav from './lib/BottomNav.svelte'
-  import Dashboard from './lib/views/Dashboard.svelte'
-  import Subscriptions from './lib/views/Subscriptions.svelte'
+  import Sidebar from './lib/Sidebar.svelte'
+  import Servers from './lib/views/Servers.svelte'
   import RoutingRules from './lib/views/RoutingRules.svelte'
+  import Statistics from './lib/views/Statistics.svelte'
+  import Logs from './lib/views/Logs.svelte'
   import Settings from './lib/views/Settings.svelte'
   import About from './lib/views/About.svelte'
 
   const HISTORY_LEN = 60
 
-  let activeTab = $state('dashboard')
+  let activeTab = $state('servers')
 
   let status = $state({
     state: State.DISCONNECTED,
@@ -74,12 +75,12 @@
     // process — e.g. clicking "Установить в приложение" on a subscription
     // page — after it's been added as a new subscription.
     EventsOn('subscription:added', () => {
-      activeTab = 'subscriptions'
+      activeTab = 'servers'
       reloadSettings()
     })
 
     // Fired after a background auto-refresh of subscriptions — same reload,
-    // but without yanking the user over to the Subscriptions tab.
+    // but without yanking the user over to the Servers tab.
     EventsOn('settings:updated', () => {
       reloadSettings()
     })
@@ -122,26 +123,35 @@
       <button class="shrink-0 cursor-pointer font-medium hover:underline" onclick={() => (killSwitchWarning = '')}>Скрыть</button>
     </div>
   {/if}
-  {#if activeTab === 'dashboard'}
-    <Dashboard
-      {status}
-      {history}
-      {currentUp}
-      {currentDown}
-      {activeLabel}
-      ontoggle={toggle}
-      systemWide={settings.systemWide}
-      onmodechange={changeMode}
-    />
-  {:else if activeTab === 'subscriptions'}
-    <Subscriptions {settings} onchange={reloadSettings} />
-  {:else if activeTab === 'routing'}
-    <RoutingRules {settings} onchange={reloadSettings} />
-  {:else if activeTab === 'settings'}
-    <Settings {settings} onchange={reloadSettings} />
-  {:else}
-    <About />
-  {/if}
 
-  <BottomNav active={activeTab} onselect={(id) => (activeTab = id)} />
+  <div class="flex flex-1 overflow-hidden">
+    <Sidebar active={activeTab} onselect={(id) => (activeTab = id)} />
+
+    <div class="flex flex-1 overflow-hidden">
+      {#if activeTab === 'servers'}
+        <Servers
+          {settings}
+          onchange={reloadSettings}
+          {status}
+          {history}
+          {currentUp}
+          {currentDown}
+          {activeLabel}
+          ontoggle={toggle}
+          systemWide={settings.systemWide}
+          onmodechange={changeMode}
+        />
+      {:else if activeTab === 'routing'}
+        <RoutingRules {settings} onchange={reloadSettings} />
+      {:else if activeTab === 'stats'}
+        <Statistics {status} {history} {currentUp} {currentDown} {activeLabel} />
+      {:else if activeTab === 'logs'}
+        <Logs />
+      {:else if activeTab === 'settings'}
+        <Settings {settings} onchange={reloadSettings} />
+      {:else}
+        <About />
+      {/if}
+    </div>
+  </div>
 </div>

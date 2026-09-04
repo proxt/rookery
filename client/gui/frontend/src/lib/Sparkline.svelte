@@ -1,6 +1,8 @@
 <script>
   // history: array of { up, down } byte/s samples, oldest first.
-  let { history = [] } = $props()
+  // heightClass lets a caller (e.g. the larger Statistics view) render a
+  // taller chart than the dashboard's compact default.
+  let { history = [], heightClass = 'h-16' } = $props()
 
   const width = 100
   const height = 100
@@ -42,7 +44,7 @@
   const upPath = $derived(buildPath(history.map((h) => h.up), maxVal))
 </script>
 
-<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none" class="h-16 w-full overflow-visible">
+<svg viewBox="0 0 {width} {height}" preserveAspectRatio="none" class="{heightClass} w-full overflow-visible">
   <defs>
     <linearGradient id="down-fill" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="var(--color-down)" stop-opacity="0.35" />
