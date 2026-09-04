@@ -70,14 +70,15 @@ func (s *Store) migrate() error {
 		-- happ model this (one subscription URL per user), rather than a
 		-- user owning multiple named subscriptions.
 		CREATE TABLE IF NOT EXISTS users (
-			id             TEXT PRIMARY KEY,
-			name           TEXT NOT NULL,
-			token          TEXT NOT NULL UNIQUE,
-			enabled        INTEGER NOT NULL DEFAULT 1,
-			starts_at      TEXT NOT NULL DEFAULT '',
-			expires_at     TEXT NOT NULL DEFAULT '',
-			last_active_at TEXT NOT NULL DEFAULT '',
-			created_at     TEXT NOT NULL
+			id                  TEXT PRIMARY KEY,
+			name                TEXT NOT NULL,
+			token               TEXT NOT NULL UNIQUE,
+			enabled             INTEGER NOT NULL DEFAULT 1,
+			starts_at           TEXT NOT NULL DEFAULT '',
+			expires_at          TEXT NOT NULL DEFAULT '',
+			last_active_at      TEXT NOT NULL DEFAULT '',
+			routing_rule_set_id TEXT NOT NULL DEFAULT '',
+			created_at          TEXT NOT NULL
 		);
 
 		CREATE TABLE IF NOT EXISTS nodes (
@@ -130,6 +131,16 @@ func (s *Store) migrate() error {
 			created_at  TEXT NOT NULL
 		);
 		CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+
+		-- Rules always read/written as one whole set (never queried row by
+		-- row), same reasoning as nodes.tags being free text rather than
+		-- normalized — a JSON blob avoids a join for no benefit here.
+		CREATE TABLE IF NOT EXISTS routing_rule_sets (
+			id         TEXT PRIMARY KEY,
+			name       TEXT NOT NULL,
+			rules_json TEXT NOT NULL DEFAULT '[]',
+			created_at TEXT NOT NULL
+		);
 	`)
 	if err != nil {
 		return fmt.Errorf("store: migrate: %w", err)
@@ -142,6 +153,9 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.addColumnIfMissing("settings", "auto_update_enabled", `INTEGER NOT NULL DEFAULT 1`); err != nil {
+		return err
+	}
+	if err := s.addColumnIfMissing("users", "routing_rule_set_id", `TEXT NOT NULL DEFAULT ''`); err != nil {
 		return err
 	}
 	return nil

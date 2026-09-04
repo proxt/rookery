@@ -18,15 +18,16 @@ type nodeSummary struct {
 }
 
 type userView struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	SubURL       string        `json:"sub_url"`
-	Enabled      bool          `json:"enabled"`
-	StartsAt     string        `json:"starts_at"`
-	ExpiresAt    string        `json:"expires_at"`
-	LastActiveAt string        `json:"last_active_at"`
-	CreatedAt    string        `json:"created_at"`
-	Nodes        []nodeSummary `json:"nodes"`
+	ID               string        `json:"id"`
+	Name             string        `json:"name"`
+	SubURL           string        `json:"sub_url"`
+	Enabled          bool          `json:"enabled"`
+	StartsAt         string        `json:"starts_at"`
+	ExpiresAt        string        `json:"expires_at"`
+	LastActiveAt     string        `json:"last_active_at"`
+	RoutingRuleSetID string        `json:"routing_rule_set_id"`
+	CreatedAt        string        `json:"created_at"`
+	Nodes            []nodeSummary `json:"nodes"`
 }
 
 func (s *Server) toUserView(u store.User, publicAddr string) (userView, error) {
@@ -40,15 +41,16 @@ func (s *Server) toUserView(u store.User, publicAddr string) (userView, error) {
 	}
 
 	return userView{
-		ID:           u.ID,
-		Name:         u.Name,
-		SubURL:       strings.TrimSuffix(publicAddr, "/") + "/sub/" + u.Token,
-		Enabled:      u.Enabled,
-		StartsAt:     u.StartsAt,
-		ExpiresAt:    u.ExpiresAt,
-		LastActiveAt: u.LastActiveAt,
-		CreatedAt:    u.CreatedAt.Format(time.RFC3339),
-		Nodes:        summaries,
+		ID:               u.ID,
+		Name:             u.Name,
+		SubURL:           strings.TrimSuffix(publicAddr, "/") + "/sub/" + u.Token,
+		Enabled:          u.Enabled,
+		StartsAt:         u.StartsAt,
+		ExpiresAt:        u.ExpiresAt,
+		LastActiveAt:     u.LastActiveAt,
+		RoutingRuleSetID: u.RoutingRuleSetID,
+		CreatedAt:        u.CreatedAt.Format(time.RFC3339),
+		Nodes:            summaries,
 	}, nil
 }
 

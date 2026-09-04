@@ -10,6 +10,7 @@
     { id: 'releases', label: 'Обновления', icon: 'M12 3v12m0 0-4-4m4 4 4-4M4 21h16' },
     { id: 'admins', label: 'Админы', icon: 'M12 3l7 3v6c0 4-3 7-7 8-4-1-7-4-7-8V6l7-3Z' },
     { id: 'audit', label: 'Журнал', icon: 'M9 4h10a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H9m0-16H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4m0-16v16M13 9h4M13 13h4' },
+    { id: 'routing', label: 'Маршрутизация', icon: 'M4 6h6a2 2 0 0 1 2 2v8a2 2 0 0 0 2 2h6M16 6l4 4-4 4M4 18h6' },
     { id: 'settings', label: 'Настройки', icon: 'circle' },
   ]
 </script>

@@ -44,9 +44,23 @@ type nodeOut struct {
 	SessionToken string `json:"session_token"`
 }
 
+type routingRuleOut struct {
+	ID     string `json:"id"`
+	Type   string `json:"type"`
+	Value  string `json:"value"`
+	Action string `json:"action"`
+}
+
+type routingRuleSetOut struct {
+	ID    string           `json:"id"`
+	Name  string           `json:"name"`
+	Rules []routingRuleOut `json:"rules"`
+}
+
 type subOut struct {
-	Name  string    `json:"name"`
-	Nodes []nodeOut `json:"nodes"`
+	Name           string             `json:"name"`
+	Nodes          []nodeOut          `json:"nodes"`
+	RoutingRuleSet *routingRuleSetOut `json:"routing_rule_set,omitempty"`
 }
 
 func (s *Server) handleSub(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +95,25 @@ func (s *Server) handleSub(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out.Nodes = append(out.Nodes, nodeOut{ID: n.ID, Name: n.Name, Tags: n.Tags, Address: n.Address, SessionToken: token})
+	}
+
+	if u.RoutingRuleSetID != "" {
+		rs, err := s.store.GetRoutingRuleSet(u.RoutingRuleSetID)
+		if err != nil && err != store.ErrNotFound {
+			slog.Error("subapi: get routing rule set", "id", u.RoutingRuleSetID, "error", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if err == nil {
+			rules := make([]routingRuleOut, 0, len(rs.Rules))
+			for _, rule := range rs.Rules {
+				rules = append(rules, routingRuleOut{ID: rule.ID, Type: rule.Type, Value: rule.Value, Action: rule.Action})
+			}
+			out.RoutingRuleSet = &routingRuleSetOut{ID: rs.ID, Name: rs.Name, Rules: rules}
+		}
+		// ErrNotFound (set was deleted after being assigned) is silently
+		// treated as "no rule set" — the user just gets the same result as
+		// an unassigned user, no error surfaced.
 	}
 
 	if wantsHTML(r) {

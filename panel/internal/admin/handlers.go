@@ -54,6 +54,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /admin/api/users/{id}", s.requireAuth(s.handleUpdateUser))
 	mux.HandleFunc("DELETE /admin/api/users/{id}", s.requireAuth(s.handleDeleteUser))
 	mux.HandleFunc("PUT /admin/api/users/{id}/nodes", s.requireAuth(s.handleSetUserNodes))
+	mux.HandleFunc("PUT /admin/api/users/{id}/routing-rule-set", s.requireAuth(s.handleSetUserRoutingRuleSet))
 
 	mux.HandleFunc("GET /admin/api/nodes", s.requireAuth(s.handleListNodes))
 	mux.HandleFunc("POST /admin/api/nodes", s.requireAuth(s.handleCreateNode))
@@ -71,6 +72,11 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /admin/api/releases/{id}", s.requireAuth(s.handleDeleteRelease))
 
 	mux.HandleFunc("GET /admin/api/audit-log", s.requireAuth(s.handleListAuditLog))
+
+	mux.HandleFunc("GET /admin/api/routing-rule-sets", s.requireAuth(s.handleListRoutingRuleSets))
+	mux.HandleFunc("POST /admin/api/routing-rule-sets", s.requireAuth(s.handleCreateRoutingRuleSet))
+	mux.HandleFunc("PUT /admin/api/routing-rule-sets/{id}", s.requireAuth(s.handleUpdateRoutingRuleSet))
+	mux.HandleFunc("DELETE /admin/api/routing-rule-sets/{id}", s.requireAuth(s.handleDeleteRoutingRuleSet))
 
 	uiSub, err := fs.Sub(uiFS, "frontend/dist")
 	if err != nil {

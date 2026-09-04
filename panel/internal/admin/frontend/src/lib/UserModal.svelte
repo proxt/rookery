@@ -13,6 +13,12 @@
   let saving = $state(false)
   let confirmingDelete = $state(false)
 
+  // Routing tab
+  let ruleSets = $state([])
+  let ruleSetsLoading = $state(true)
+  let selectedRuleSetId = $state('')
+  let savingRouting = $state(false)
+
   // Info tab form state
   let name = $state('')
   let enabled = $state(true)
@@ -36,8 +42,30 @@
     expiresAt = toDatetimeLocal(user.expires_at)
     unlimited = !user.starts_at && !user.expires_at
     selectedNodeIds = new Set(user.nodes.map((n) => n.id))
+    selectedRuleSetId = user.routing_rule_set_id || ''
   }
   load()
+
+  async function loadRuleSets() {
+    ruleSetsLoading = true
+    ruleSets = (await api.listRoutingRuleSets()) ?? []
+    ruleSetsLoading = false
+  }
+
+  $effect(() => {
+    if (tab === 'routing' && ruleSetsLoading) loadRuleSets()
+  })
+
+  async function saveRouting() {
+    savingRouting = true
+    try {
+      await api.setUserRoutingRuleSet(userId, selectedRuleSetId)
+      await load()
+      onchanged()
+    } finally {
+      savingRouting = false
+    }
+  }
 
   function onUnlimitedChange() {
     if (unlimited) {
@@ -127,7 +155,7 @@
       </div>
 
       <div class="flex gap-1 border-b border-border px-3 pt-2">
-        {#each [['info', 'Инфо'], ['nodes', 'Ноды'], ['stats', 'Статистика']] as [id, label] (id)}
+        {#each [['info', 'Инфо'], ['nodes', 'Ноды'], ['routing', 'Маршрутизация'], ['stats', 'Статистика']] as [id, label] (id)}
           <button
             class="relative px-3 pb-2.5 text-sm font-medium transition-colors cursor-pointer {tab === id ? 'text-text' : 'text-muted hover:text-text'}"
             onclick={() => (tab = id)}
@@ -213,6 +241,33 @@
               {/each}
               <div class="flex justify-end pt-2">
                 <button class="btn-primary" onclick={saveNodes} disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+              </div>
+            {/if}
+          </div>
+        {:else if tab === 'routing'}
+          <div in:fade={{ duration: 150 }} class="space-y-3">
+            {#if ruleSetsLoading}
+              <div class="py-16 text-center text-sm text-muted">Загрузка…</div>
+            {:else}
+              <p class="text-xs text-muted">Набор правил маршрутизации, который уедет вместе с подпиской этого пользователя.</p>
+              <label class="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+                <span class="text-sm">Без маршрутизации</span>
+                <input type="radio" class="h-4 w-4 accent-[var(--color-up)]" name="rule-set" checked={selectedRuleSetId === ''} onchange={() => (selectedRuleSetId = '')} />
+              </label>
+              {#each ruleSets as rs (rs.id)}
+                <label class="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-surface-2 px-3 py-2.5">
+                  <div>
+                    <div class="text-sm font-medium">{rs.name}</div>
+                    <div class="text-xs text-muted">{rs.rules.length} правил</div>
+                  </div>
+                  <input type="radio" class="h-4 w-4 accent-[var(--color-up)]" name="rule-set" checked={selectedRuleSetId === rs.id} onchange={() => (selectedRuleSetId = rs.id)} />
+                </label>
+              {/each}
+              {#if ruleSets.length === 0}
+                <p class="py-4 text-center text-xs text-muted">Наборов правил ещё нет — создайте на вкладке «Маршрутизация» в меню слева.</p>
+              {/if}
+              <div class="flex justify-end pt-2">
+                <button class="btn-primary" onclick={saveRouting} disabled={savingRouting}>{savingRouting ? 'Сохранение…' : 'Сохранить'}</button>
               </div>
             {/if}
           </div>

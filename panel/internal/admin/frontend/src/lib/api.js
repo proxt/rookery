@@ -86,4 +86,11 @@ export const api = {
   statsNode: (id) => request('GET', `/admin/api/stats/nodes/${id}`),
 
   listAuditLog: (limit = 200) => request('GET', `/admin/api/audit-log?limit=${limit}`),
+
+  listRoutingRuleSets: () => request('GET', '/admin/api/routing-rule-sets'),
+  createRoutingRuleSet: (name) => request('POST', '/admin/api/routing-rule-sets', { name }),
+  updateRoutingRuleSet: (id, name, rules) => request('PUT', `/admin/api/routing-rule-sets/${id}`, { name, rules }),
+  deleteRoutingRuleSet: (id) => request('DELETE', `/admin/api/routing-rule-sets/${id}`),
+  setUserRoutingRuleSet: (userId, ruleSetId) =>
+    request('PUT', `/admin/api/users/${userId}/routing-rule-set`, { routing_rule_set_id: ruleSetId }),
 }

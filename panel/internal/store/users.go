@@ -11,14 +11,15 @@ import (
 // rookery:// link), an enabled flag, an optional active window, and the set
 // of nodes it grants access to.
 type User struct {
-	ID           string
-	Name         string
-	Token        string
-	Enabled      bool
-	StartsAt     string // RFC3339Nano, or "" for no lower bound
-	ExpiresAt    string // RFC3339Nano, or "" for never
-	LastActiveAt string // RFC3339Nano, or "" if never reported traffic
-	CreatedAt    time.Time
+	ID               string
+	Name             string
+	Token            string
+	Enabled          bool
+	StartsAt         string // RFC3339Nano, or "" for no lower bound
+	ExpiresAt        string // RFC3339Nano, or "" for never
+	LastActiveAt     string // RFC3339Nano, or "" if never reported traffic
+	RoutingRuleSetID string // "" if no routing rule set is assigned
+	CreatedAt        time.Time
 }
 
 // ErrNotFound is returned when a lookup or delete targets an unknown ID.
@@ -26,7 +27,7 @@ var ErrNotFound = errors.New("store: not found")
 
 // ListUsers returns all users, newest first.
 func (s *Store) ListUsers() ([]User, error) {
-	rows, err := s.db.Query(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, created_at
+	rows, err := s.db.Query(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, routing_rule_set_id, created_at
 		FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("store: list users: %w", err)
@@ -49,7 +50,7 @@ func (s *Store) ListUsers() ([]User, error) {
 
 // GetUser returns the user with the given ID.
 func (s *Store) GetUser(id string) (User, error) {
-	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, created_at
+	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, routing_rule_set_id, created_at
 		FROM users WHERE id = ?`, id)
 	u, err := scanUserRow(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -61,7 +62,7 @@ func (s *Store) GetUser(id string) (User, error) {
 // GetUserByToken looks up a user by their subscription token — used by the
 // client-facing /sub/{token} endpoint.
 func (s *Store) GetUserByToken(token string) (User, error) {
-	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, created_at
+	row := s.db.QueryRow(`SELECT id, name, token, enabled, starts_at, expires_at, last_active_at, routing_rule_set_id, created_at
 		FROM users WHERE token = ?`, token)
 	u, err := scanUserRow(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -143,6 +144,23 @@ func (s *Store) DeleteUser(id string) error {
 	return nil
 }
 
+// SetUserRoutingRuleSet assigns (or, with ruleSetID == "", clears) which
+// routing rule set is delivered with this user's subscription.
+func (s *Store) SetUserRoutingRuleSet(userID, ruleSetID string) error {
+	res, err := s.db.Exec(`UPDATE users SET routing_rule_set_id = ? WHERE id = ?`, ruleSetID, userID)
+	if err != nil {
+		return fmt.Errorf("store: set user routing rule set: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("store: set user routing rule set: %w", err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // SetUserNodes replaces the set of nodes a user has access to.
 func (s *Store) SetUserNodes(userID string, nodeIDs []string) error {
 	tx, err := s.db.Begin()
@@ -196,7 +214,7 @@ func scanUser(rows *sql.Rows) (User, error) {
 	var u User
 	var enabled int
 	var createdAt string
-	if err := rows.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &u.LastActiveAt, &createdAt); err != nil {
+	if err := rows.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &u.LastActiveAt, &u.RoutingRuleSetID, &createdAt); err != nil {
 		return User{}, fmt.Errorf("store: scan user: %w", err)
 	}
 	u.Enabled = enabled != 0
@@ -212,7 +230,7 @@ func scanUserRow(row *sql.Row) (User, error) {
 	var u User
 	var enabled int
 	var createdAt string
-	if err := row.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &u.LastActiveAt, &createdAt); err != nil {
+	if err := row.Scan(&u.ID, &u.Name, &u.Token, &enabled, &u.StartsAt, &u.ExpiresAt, &u.LastActiveAt, &u.RoutingRuleSetID, &createdAt); err != nil {
 		return User{}, err
 	}
 	u.Enabled = enabled != 0
