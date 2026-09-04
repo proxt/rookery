@@ -37,4 +37,6 @@ export function SetActiveNode(arg1:string,arg2:string):Promise<void>;
 
 export function SetActiveSubscription(arg1:string):Promise<void>;
 
+export function SetSystemWideMode(arg1:boolean):Promise<void>;
+
 export function Show():Promise<void>;

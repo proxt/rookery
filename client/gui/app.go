@@ -241,6 +241,22 @@ func (a *App) SaveGeneralSettings(socksPort int, autoStart, startMinimized, syst
 	return setAutoStart(autoStart)
 }
 
+// SetSystemWideMode is a lightweight, dashboard-level counterpart to
+// SaveGeneralSettings' systemWide param — for the mode dropdown next to the
+// connect button (proxy vs. system-wide/TUN), which shouldn't need to know
+// every other general setting just to flip one. Doesn't touch KillSwitch:
+// it only ever takes effect when SystemWide is also true (see
+// killswitch.go's armKillSwitch), so a stale killSwitch=true alongside
+// systemWide=false is inert, not a bug.
+func (a *App) SetSystemWideMode(enabled bool) error {
+	settings, err := a.GetAppSettings()
+	if err != nil {
+		return err
+	}
+	settings.SystemWide = enabled
+	return saveSettings(a.settingsPath, settings)
+}
+
 // AddSubscriptionFromLink decodes a rookery://sub/... link, fetches its
 // current node list, and adds it as a new saved subscription. If it's the
 // first subscription, it becomes the active one.

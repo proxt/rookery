@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { Connect, Disconnect, GetStatus, GetAppSettings } from '../wailsjs/go/main/App.js'
+  import { Connect, Disconnect, GetStatus, GetAppSettings, SetSystemWideMode } from '../wailsjs/go/main/App.js'
   import { EventsOn } from '../wailsjs/runtime/runtime.js'
   import { State, EventType } from './lib/constants.js'
   import BottomNav from './lib/BottomNav.svelte'
@@ -95,6 +95,23 @@
       status = { ...status, state: State.ERROR, lastError: String(e) }
     }
   }
+
+  // Mode (proxy vs. TUN) dropdown on the dashboard — a lighter-weight path
+  // than the full Settings form. If a session is already running, the new
+  // mode can't apply mid-session (SOCKS5-vs-TUN capture is set up once at
+  // Start), so this reconnects; otherwise it just saves for next Connect.
+  async function changeMode(systemWide) {
+    await SetSystemWideMode(systemWide)
+    await reloadSettings()
+    if (status.state === State.CONNECTED || status.state === State.CONNECTING) {
+      Disconnect()
+      try {
+        await Connect()
+      } catch (e) {
+        status = { ...status, state: State.ERROR, lastError: String(e) }
+      }
+    }
+  }
 </script>
 
 <div class="flex h-screen flex-col">
@@ -105,7 +122,16 @@
     </div>
   {/if}
   {#if activeTab === 'dashboard'}
-    <Dashboard {status} {history} {currentUp} {currentDown} {activeLabel} ontoggle={toggle} />
+    <Dashboard
+      {status}
+      {history}
+      {currentUp}
+      {currentDown}
+      {activeLabel}
+      ontoggle={toggle}
+      systemWide={settings.systemWide}
+      onmodechange={changeMode}
+    />
   {:else if activeTab === 'subscriptions'}
     <Subscriptions {settings} onchange={reloadSettings} />
   {:else if activeTab === 'settings'}

@@ -6,7 +6,7 @@
   import Sparkline from '../Sparkline.svelte'
   import StatIcon from '../StatIcon.svelte'
 
-  let { status, history, currentUp, currentDown, activeLabel, ontoggle } = $props()
+  let { status, history, currentUp, currentDown, activeLabel, ontoggle, systemWide, onmodechange } = $props()
 
   // Full literal class strings (not built from a short key) so Tailwind's
   // static scanner — which only picks up whole tokens it can see verbatim
@@ -40,6 +40,22 @@
       {activeLabel || 'Подписка не выбрана'}
     </span>
   </header>
+
+  <div class="flex justify-center fade-in-up" style="animation-delay: 20ms">
+    <div class="relative">
+      <select
+        class="input w-auto cursor-pointer appearance-none py-1.5 pr-8 pl-3 text-xs font-medium"
+        value={systemWide ? 'tun' : 'proxy'}
+        onchange={(e) => onmodechange(e.target.value === 'tun')}
+      >
+        <option value="proxy">Прокси (SOCKS5)</option>
+        <option value="tun">TUN — весь трафик ПК</option>
+      </select>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-muted">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </div>
+  </div>
 
   <div class="flex flex-1 flex-col items-center justify-center gap-4">
     <ToggleButton state={status.state} onclick={ontoggle} />

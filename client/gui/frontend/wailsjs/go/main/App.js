@@ -70,6 +70,10 @@ export function SetActiveSubscription(arg1) {
   return window['go']['main']['App']['SetActiveSubscription'](arg1);
 }
 
+export function SetSystemWideMode(arg1) {
+  return window['go']['main']['App']['SetSystemWideMode'](arg1);
+}
+
 export function Show() {
   return window['go']['main']['App']['Show']();
 }
