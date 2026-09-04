@@ -9,6 +9,7 @@ import (
 
 	"github.com/xtaci/smux"
 
+	"github.com/rookery/client/internal/routing"
 	"github.com/rookery/shared/protocol"
 )
 
@@ -58,7 +59,12 @@ func (e *Engine) handleUDPAssociate(ctx context.Context, ctrl net.Conn) {
 		relayConn.Close()
 	}()
 
-	a := &udpAssociation{engine: e, relay: relayConn, streams: make(map[string]*udpDestStream)}
+	a := &udpAssociation{
+		engine:      e,
+		relay:       relayConn,
+		streams:     make(map[string]*udpDestStream),
+		directDests: make(map[string]*udpDirectDest),
+	}
 	a.run(assocCtx)
 }
 
@@ -68,9 +74,10 @@ type udpAssociation struct {
 	engine *Engine
 	relay  *net.UDPConn
 
-	mu         sync.Mutex
-	clientAddr *net.UDPAddr
-	streams    map[string]*udpDestStream
+	mu          sync.Mutex
+	clientAddr  *net.UDPAddr
+	streams     map[string]*udpDestStream
+	directDests map[string]*udpDirectDest
 }
 
 type udpDestStream struct {
@@ -81,6 +88,23 @@ type udpDestStream struct {
 func (ds *udpDestStream) poke() {
 	select {
 	case ds.activity <- struct{}{}:
+	default:
+	}
+}
+
+// udpDirectDest is a direct (non-tunneled) UDP "connection" — routing.
+// ActionDirect's counterpart to udpDestStream. A UDP socket is already
+// message-oriented, so unlike the tunneled path there's no
+// protocol.WriteDatagram/ReadDatagram framing to apply: payloads go
+// straight in and out of conn.
+type udpDirectDest struct {
+	conn     net.Conn
+	activity chan struct{}
+}
+
+func (dd *udpDirectDest) poke() {
+	select {
+	case dd.activity <- struct{}{}:
 	default:
 	}
 }
@@ -114,10 +138,19 @@ func (a *udpAssociation) closeAllStreams() {
 	for _, ds := range a.streams {
 		ds.stream.Close()
 	}
+	for _, dd := range a.directDests {
+		dd.conn.Close()
+	}
 }
 
 func (a *udpAssociation) forward(ctx context.Context, dest destination, payload []byte) {
 	key := fmt.Sprintf("%d|%s|%d", dest.addrType, dest.addr, dest.port)
+
+	host, ip := hostAndIP(dest.addrType, dest.addr)
+	if a.engine.decide("", host, ip) == routing.ActionDirect {
+		a.forwardDirect(ctx, key, dest, payload)
+		return
+	}
 
 	a.mu.Lock()
 	ds, ok := a.streams[key]
@@ -151,6 +184,93 @@ func (a *udpAssociation) forward(ctx context.Context, dest destination, payload 
 	}
 	ds.poke()
 	a.engine.bytesUp.Add(uint64(len(payload)))
+}
+
+// forwardDirect is forward's counterpart for routing.ActionDirect
+// destinations: dials the real destination straight from this machine
+// instead of opening a tunnel stream.
+func (a *udpAssociation) forwardDirect(ctx context.Context, key string, dest destination, payload []byte) {
+	a.mu.Lock()
+	dd, ok := a.directDests[key]
+	a.mu.Unlock()
+
+	if !ok {
+		conn, err := net.Dial("udp", net.JoinHostPort(dest.addr, fmt.Sprint(dest.port)))
+		if err != nil {
+			return
+		}
+
+		dd = &udpDirectDest{conn: conn, activity: make(chan struct{}, 1)}
+		a.mu.Lock()
+		a.directDests[key] = dd
+		a.mu.Unlock()
+		a.engine.activeStreams.Add(1)
+		go a.readDirectReplies(ctx, key, dd, dest)
+	}
+
+	if _, err := dd.conn.Write(payload); err != nil {
+		return
+	}
+	dd.poke()
+	a.engine.bytesUp.Add(uint64(len(payload)))
+}
+
+// readDirectReplies is readReplies' counterpart for a direct UDP
+// destination — no protocol.ReadDatagram framing, just raw reads off the
+// socket.
+func (a *udpAssociation) readDirectReplies(ctx context.Context, key string, dd *udpDirectDest, dest destination) {
+	defer func() {
+		a.mu.Lock()
+		delete(a.directDests, key)
+		a.mu.Unlock()
+		dd.conn.Close()
+		a.engine.activeStreams.Add(-1)
+	}()
+
+	readErr := make(chan struct{}, 1)
+	go func() {
+		buf := make([]byte, protocol.MaxDatagramSize)
+		for {
+			n, err := dd.conn.Read(buf)
+			if err != nil {
+				readErr <- struct{}{}
+				return
+			}
+			dd.poke()
+
+			a.mu.Lock()
+			clientAddr := a.clientAddr
+			a.mu.Unlock()
+			if clientAddr != nil {
+				if reply, err := encodeSocks5UDPPacket(dest.addrType, dest.addr, dest.port, buf[:n]); err == nil {
+					a.relay.WriteToUDP(reply, clientAddr)
+					a.engine.bytesDown.Add(uint64(n))
+				}
+			}
+		}
+	}()
+
+	idleTimer := time.NewTimer(udpStreamIdleTimeout)
+	defer idleTimer.Stop()
+
+	for {
+		select {
+		case <-readErr:
+			return
+		case <-dd.activity:
+			if !idleTimer.Stop() {
+				select {
+				case <-idleTimer.C:
+				default:
+				}
+			}
+			idleTimer.Reset(udpStreamIdleTimeout)
+		case <-idleTimer.C:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // readReplies owns ds's lifetime: it reads datagrams coming back from the

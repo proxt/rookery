@@ -14,6 +14,8 @@ import (
 
 	"github.com/pion/webrtc/v4"
 	"github.com/xtaci/smux"
+
+	"github.com/rookery/client/internal/routing"
 )
 
 // State is the tunnel's connection state.
@@ -67,6 +69,11 @@ type Config struct {
 	// it reconnects (or killSwitchAutoDisengageAfter elapses). No effect
 	// unless SystemWide is also true.
 	KillSwitch bool
+	// Matcher decides, per destination, whether to relay through the
+	// tunnel or dial directly. Nil means "always tunnel" (today's
+	// behavior) — the zero value of *routing.Matcher is never
+	// dereferenced without a nil check, see Engine.decide.
+	Matcher *routing.Matcher
 }
 
 // StatusSnapshot is a point-in-time read of the tunnel's status.
@@ -136,6 +143,8 @@ type Engine struct {
 	httpClient *http.Client
 
 	ks killSwitch
+
+	matcher atomic.Pointer[routing.Matcher]
 }
 
 // New creates an idle Engine. Call Start to begin tunneling.
@@ -168,6 +177,7 @@ func (e *Engine) Start(ctx context.Context, cfg Config) error {
 	e.cancel = cancel
 	e.running = true
 	e.armKillSwitch(cfg)
+	e.matcher.Store(cfg.Matcher)
 	e.setState(innerCtx, StateConnecting, "")
 
 	e.wg.Add(4)
@@ -203,6 +213,7 @@ func (e *Engine) Stop() {
 	e.sess.Store(nil)
 	e.activePC.Store(nil)
 	e.activeStreams.Store(0)
+	e.matcher.Store(nil)
 	e.setState(context.Background(), StateDisconnected, "")
 }
 
@@ -268,4 +279,16 @@ func (e *Engine) emitStatsTick(ev Event) {
 	case e.events <- ev:
 	default:
 	}
+}
+
+// decide is the one place every relay path (SOCKS5 TCP/UDP, system-wide
+// capture) asks whether a destination should go through the tunnel or be
+// dialed directly. A nil matcher (no rule sets configured) always tunnels —
+// today's behavior, unchanged unless the user actually sets up rules.
+func (e *Engine) decide(exeName, host string, ip net.IP) routing.Action {
+	m := e.matcher.Load()
+	if m == nil {
+		return routing.ActionProxy
+	}
+	return m.Decide(exeName, host, ip)
 }
